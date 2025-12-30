@@ -1,224 +1,599 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const Home: NextPage = () => {
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleString('bg-BG', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short'
-      }));
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-
-    return () => clearInterval(interval);
+  const updateTime = useCallback(() => {
+    const now = new Date();
+    const timeString = now.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short'
+    });
+    setCurrentTime(timeString);
   }, []);
 
+  // Memoize error handlers to prevent re-renders
+  const handleLogoError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget as HTMLImageElement;
+    img.style.display = 'none';
+    img.parentElement!.innerHTML = '<span style="color: white; font-weight: bold; font-size: 1.25rem;">AI</span>';
+  }, []);
+
+  const handleSmallLogoError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget as HTMLImageElement;
+    img.style.display = 'none';
+    img.parentElement!.innerHTML = '<span style="color: white; font-weight: bold; font-size: 0.875rem;">AI</span>';
+  }, []);
+
+  useEffect(() => {
+    // Set initial time
+    updateTime();
+
+    // Update time every second
+    const interval = setInterval(updateTime, 1000);
+
+    // Trigger page load animation
+    const timeout = setTimeout(() => setIsLoaded(true), 200);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [updateTime]);
+
+  // Enhanced Cursor Trail Effect
+  useEffect(() => {
+    let trailElements: HTMLElement[] = [];
+    let trailHistory: { x: number; y: number; timestamp: number }[] = [];
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let animationId: number;
+
+    const createTrailSegment = (x: number, y: number, index: number, totalSegments: number) => {
+      const element = document.createElement('div');
+      element.className = 'trail-segment';
+
+      // Create gradient effect based on position in trail
+      const opacity = Math.max(0.1, (totalSegments - index) / totalSegments);
+      const size = Math.max(6, 20 - index * 1.2);
+
+      element.style.left = `${x - size/2}px`;
+      element.style.top = `${y - size/2}px`;
+
+      element.style.width = `${size}px`;
+      element.style.height = `${size}px`;
+      element.style.opacity = opacity.toString();
+      element.style.background = `radial-gradient(circle, rgba(244, 114, 182, ${opacity * 0.8}) 0%, rgba(124, 58, 237, ${opacity * 0.4}) 50%, transparent 100%)`;
+
+      document.body.appendChild(element);
+      trailElements.push(element);
+
+      // Remove element after animation with staggered timing
+      setTimeout(() => {
+        if (element.parentNode) {
+          element.parentNode.removeChild(element);
+        }
+        trailElements = trailElements.filter(el => el !== element);
+      }, 800 + index * 50);
+    };
+
+    const createConnectingLine = (startX: number, startY: number, endX: number, endY: number, intensity: number) => {
+      const element = document.createElement('div');
+      element.className = 'connecting-line';
+
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      element.style.left = `${startX}px`;
+      element.style.top = `${startY - 1.5}px`;
+      element.style.width = `${distance}px`;
+      element.style.height = '3px';
+      element.style.transformOrigin = '0 50%';
+      element.style.transform = `rotate(${angle}deg)`;
+      element.style.opacity = intensity.toString();
+      element.style.background = `linear-gradient(90deg, rgba(244, 114, 182, ${intensity}), rgba(124, 58, 237, ${intensity * 0.5}), transparent)`;
+
+      document.body.appendChild(element);
+      trailElements.push(element);
+
+      setTimeout(() => {
+        if (element.parentNode) {
+          element.parentNode.removeChild(element);
+        }
+        trailElements = trailElements.filter(el => el !== element);
+      }, 600);
+    };
+
+    const updateTrail = (currentTime: number) => {
+      // Create continuous trail segments
+      trailHistory.forEach((point, index) => {
+        if (currentTime - point.timestamp < 800) {
+          createTrailSegment(point.x, point.y, index, trailHistory.length);
+        }
+      });
+
+      // Create connecting lines between recent points
+      for (let i = 0; i < trailHistory.length - 1; i++) {
+        const currentPoint = trailHistory[i];
+        const nextPoint = trailHistory[i + 1];
+        const age = currentTime - currentPoint.timestamp;
+        if (age < 400) {
+          const intensity = Math.max(0.1, 1 - age / 400);
+          createConnectingLine(currentPoint.x, currentPoint.y, nextPoint.x, nextPoint.y, intensity);
+        }
+      }
+
+      // Clean up old trail history
+      trailHistory = trailHistory.filter(point => currentTime - point.timestamp < 1000);
+
+      // Limit DOM elements for performance
+      if (trailElements.length > 50) {
+        const elementsToRemove = trailElements.splice(0, trailElements.length - 50);
+        elementsToRemove.forEach(element => {
+          if (element.parentNode) {
+            element.parentNode.removeChild(element);
+          }
+        });
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const currentX = e.clientX;
+      const currentY = e.clientY;
+      const currentTime = Date.now();
+
+      // Add current position to trail history
+      trailHistory.push({ x: currentX, y: currentY, timestamp: currentTime });
+
+      // Keep only recent history
+      if (trailHistory.length > 15) {
+        trailHistory.shift();
+      }
+
+      lastMouseX = currentX;
+      lastMouseY = currentY;
+    };
+
+    // Animation loop for smooth trail updates
+    const animate = () => {
+      updateTrail(Date.now());
+      animationId = requestAnimationFrame(animate);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    animate();
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      cancelAnimationFrame(animationId);
+      // Clean up any remaining trail elements
+      trailElements.forEach(element => {
+        if (element.parentNode) {
+          element.parentNode.removeChild(element);
+        }
+      });
+    };
+  }, []);
+
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900">
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(to bottom right, #111827, #7c3aed, #3730a3)',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Animated background elements */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '10%',
+          left: '10%',
+          width: '200px',
+          height: '200px',
+          background: 'radial-gradient(circle, rgba(124, 58, 237, 0.1) 0%, transparent 70%)',
+          borderRadius: '50%',
+          animation: 'float 8s ease-in-out infinite'
+        }}></div>
+        <div style={{
+          position: 'absolute',
+          top: '60%',
+          right: '15%',
+          width: '150px',
+          height: '150px',
+          background: 'radial-gradient(circle, rgba(55, 48, 163, 0.08) 0%, transparent 70%)',
+          borderRadius: '50%',
+          animation: 'float 10s ease-in-out infinite reverse'
+        }}></div>
+        <div style={{
+          position: 'absolute',
+          bottom: '20%',
+          left: '70%',
+          width: '100px',
+          height: '100px',
+          background: 'radial-gradient(circle, rgba(167, 139, 250, 0.06) 0%, transparent 70%)',
+          borderRadius: '50%',
+          animation: 'float 12s ease-in-out infinite'
+        }}></div>
+      </div>
+
       <Head>
-        <title>SoftArt VibeCode - AI Tools Platform</title>
-        <meta name="description" content="Internal AI tools sharing platform for SoftArt VibeCode" />
+        <title>SoftArt AI HUB - AI Tools Platform</title>
+        <meta name="description" content="Internal AI tools sharing platform for SoftArt AI HUB" />
         <link rel="icon" href="/favicon.ico" />
+        <style>{`
+          @keyframes hologram {
+            0%, 100% { opacity: 0; transform: scale(0.8); }
+            50% { opacity: 0.3; transform: scale(1.2); }
+          }
+
+          @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-10px) rotate(2deg); }
+            66% { transform: translateY(5px) rotate(-1deg); }
+          }
+
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+          }
+
+          @keyframes gradient {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+          }
+
+          @keyframes logoGlow {
+            0%, 100% { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
+            50% { box-shadow: 0 30px 40px -5px rgba(0, 0, 0, 0.3), 0 0 30px rgba(244, 114, 182, 0.4); }
+          }
+
+          @keyframes buttonPulse {
+            0%, 100% { transform: translateY(-3px) scale(1.05); }
+            50% { transform: translateY(-5px) scale(1.08); }
+          }
+
+          @keyframes laserTrail {
+            0% {
+              opacity: 1;
+              transform: scale(1) rotate(0deg);
+            }
+            50% {
+              opacity: 0.8;
+              transform: scale(1.2) rotate(180deg);
+            }
+            100% {
+              opacity: 0;
+              transform: scale(0) rotate(360deg);
+            }
+          }
+
+          @keyframes fadeOut {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.5); }
+          }
+
+          .header-logo-effect {
+            position: relative;
+          }
+
+          .header-logo-effect:hover {
+            animation: logoGlow 1.5s ease-in-out infinite;
+          }
+
+          .login-button-effect {
+            position: relative;
+          }
+
+          .login-button-effect:hover {
+            animation: buttonPulse 1s ease-in-out infinite;
+          }
+
+          .login-button-effect::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(244, 114, 182, 0.2), transparent);
+            transition: left 0.5s ease;
+          }
+
+          .login-button-effect:hover::before {
+            left: 100%;
+          }
+
+          .trail-segment {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            animation: trailFade 1s ease-out forwards;
+          }
+
+          .connecting-line {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            border-radius: 1px;
+            transition: opacity 0.3s ease;
+            animation: lineFade 0.8s ease-out forwards;
+          }
+
+          @keyframes trailFade {
+            0% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            100% {
+              opacity: 0;
+              transform: scale(0.3);
+            }
+          }
+
+          @keyframes lineFade {
+            0% {
+              opacity: 1;
+            }
+            100% {
+              opacity: 0;
+            }
+          }
+
+
+        `}</style>
       </Head>
 
       {/* Header */}
-      <header className="bg-black/20 backdrop-blur-sm border-b border-purple-500/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-xl">AI</span>
-              </div>
+      <header style={{
+        background: 'rgba(0,0,0,0.2)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+        padding: '1rem',
+        position: 'relative',
+        zIndex: 10,
+        transition: 'all 0.3s ease',
+        opacity: isLoaded ? 1 : 0,
+        transform: isLoaded ? 'translateY(0)' : 'translateY(-20px)'
+      }}>
+        <div style={{maxWidth: '80rem', margin: '0 auto', padding: '0 1rem'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+              <a href="/" style={{textDecoration: 'none'}}>
+                <div className="header-logo-effect" style={{
+                  width: '5rem',
+                  height: '5rem',
+                  background: 'linear-gradient(to bottom right, #7c3aed, #3730a3)',
+                  borderRadius: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+                  overflow: 'hidden',
+                  transition: 'all 0.3s ease',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1) rotate(2deg)';
+                  e.currentTarget.style.boxShadow = '0 30px 40px -5px rgba(0, 0, 0, 0.3), 0 0 30px rgba(244, 114, 182, 0.4)';
+                  e.currentTarget.style.filter = 'brightness(1.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.filter = 'brightness(1)';
+                }}>
+                  <img
+                    src="/images/logo.png"
+                    alt="SoftArt AI HUB Logo"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'fill',
+                      display: 'block'
+                    }}
+                    onError={handleLogoError}
+                  />
+                </div>
+              </a>
               <div>
-                <h1 className="text-2xl font-bold text-white">SoftArt VibeCode</h1>
-                <p className="text-purple-200 text-sm">AI Tools Platform</p>
+                <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'white'}}>SoftArt AI HUB</h1>
+                <p style={{color: '#f472b6', fontSize: '0.875rem'}}>AI Tools Platform</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-purple-200 text-sm hidden md:block">
-                {currentTime}
+            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+              <div style={{
+                color: '#f472b6',
+                fontSize: '0.875rem',
+                background: 'rgba(0,0,0,0.3)',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '0.5rem'
+              }}>
+                {currentTime || 'Loading...'}
               </div>
-              <nav className="hidden md:flex space-x-4 items-center">
-                <Link href="/tools" className="text-purple-200 hover:text-white font-medium transition-colors">
-                  Browse Tools
-                </Link>
-                <Link href="/tools/new" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-purple-500/25">
-                  Add Tool
-                </Link>
-                <a
-                  href="http://localhost:8000/login"
-                  className="text-purple-200 hover:text-white font-medium border border-purple-500/30 hover:border-purple-400 px-6 py-2 rounded-lg transition-all duration-200 hover:bg-purple-500/10"
-                  target="_blank"
-                  rel="noopener noreferrer"
+              <nav style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
+                <a className="login-button-effect"
+                  href="/login"
+                  style={{
+                    color: '#c4b5fd',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    padding: '0.5rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    textDecoration: 'none',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#f472b6';
+                    e.currentTarget.style.backgroundColor = 'rgba(244, 114, 182, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(244, 114, 182, 0.4), 0 0 30px rgba(244, 114, 182, 0.2)';
+                    e.currentTarget.style.color = '#f472b6';
+                    e.currentTarget.style.textShadow = '0 0 10px rgba(244, 114, 182, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.color = '#c4b5fd';
+                    e.currentTarget.style.textShadow = 'none';
+                  }}
                 >
-                  Login
+                  <span style={{position: 'relative', zIndex: 1}}>Login</span>
                 </a>
               </nav>
-              {/* Mobile menu button */}
-              <div className="md:hidden">
-                <button className="text-purple-200 hover:text-white">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-              </div>
             </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center">
-          <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full mb-6 shadow-2xl">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
+      <main style={{
+        maxWidth: '80rem',
+        margin: '0 auto',
+        padding: '5rem 1rem',
+        position: 'relative',
+        zIndex: 5
+      }}>
+        <div style={{
+          textAlign: 'center',
+          opacity: isLoaded ? 1 : 0,
+          transform: isLoaded ? 'translateY(0)' : 'translateY(30px)',
+          transition: 'all 0.8s ease-out'
+        }}>
+          <div style={{marginBottom: '2rem'}}>
+            <div style={{
+              width: '25rem',
+              height: '25rem',
+              background: 'linear-gradient(to bottom right, #7c3aed, #3730a3)',
+              borderRadius: '50%',
+              marginBottom: '1.5rem',
+              boxShadow: '0 80px 150px -12px rgba(0, 0, 0, 0.3)',
+              transition: 'all 0.5s ease',
+              animation: 'pulse 3s ease-in-out infinite',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden'
+            }}>
+              <img
+                src="/images/logo.png"
+                alt="SoftArt AI HUB Logo"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'fill',
+                  display: 'block'
+                }}
+                onError={handleSmallLogoError}
+              />
             </div>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+          <h1 style={{
+            fontSize: 'clamp(2rem, 5vw, 4rem)',
+            fontWeight: 'bold',
+            color: 'white',
+            marginBottom: '1.5rem',
+            lineHeight: 1.2,
+            textShadow: '0 4px 8px rgba(0, 0, 0, 0.3)'
+          }}>
             Discover & Share
-            <span className="block bg-gradient-to-r from-purple-400 via-pink-500 to-indigo-400 bg-clip-text text-transparent">
+            <span style={{
+              display: 'block',
+              background: 'linear-gradient(45deg, #a78bfa, #f472b6, #3730a3)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              animation: 'gradient 4s ease infinite'
+            }}>
               AI Tools
             </span>
           </h1>
-          <p className="text-xl text-purple-200 mb-12 max-w-3xl mx-auto leading-relaxed">
+          <p style={{
+            fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+            color: '#c4b5fd',
+            marginBottom: '3rem',
+            maxWidth: '48rem',
+            margin: '0 auto 3rem',
+            lineHeight: 1.6,
+            opacity: 0.9
+          }}>
             Your internal platform for discovering, sharing, and collaborating on AI tools,
-            libraries, and applications across the SoftArt VibeCode team.
+            libraries, and applications across the SoftArt AI HUB team.
           </p>
-
-          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
-            <Link
-              href="/tools"
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-2xl hover:shadow-purple-500/25 transform hover:scale-105"
-            >
-              Browse AI Tools
-            </Link>
-            <a
-              href="http://localhost:8000/login"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-transparent border-2 border-purple-400 hover:border-purple-300 text-purple-200 hover:text-white px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-purple-500/25 transform hover:scale-105"
-            >
-              Share Your Tool
-            </a>
-          </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
-          <div className="bg-black/20 backdrop-blur-sm border border-purple-500/20 rounded-xl p-8 text-center hover:bg-black/30 transition-all duration-300">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-4">Discover Tools</h3>
-            <p className="text-purple-200">
-              Find AI tools, libraries, and frameworks shared by your colleagues across different teams and projects.
-            </p>
-          </div>
-
-          <div className="bg-black/20 backdrop-blur-sm border border-purple-500/20 rounded-xl p-8 text-center hover:bg-black/30 transition-all duration-300">
-            <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-4">Team Collaboration</h3>
-            <p className="text-purple-200">
-              Share your discoveries and learn from others. Build better AI solutions together as a team.
-            </p>
-          </div>
-
-          <div className="bg-black/20 backdrop-blur-sm border border-purple-500/20 rounded-xl p-8 text-center hover:bg-black/30 transition-all duration-300">
-            <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-4">Stay Updated</h3>
-            <p className="text-purple-200">
-              Keep track of the latest AI tools and technologies being used across your organization.
-            </p>
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="bg-black/20 backdrop-blur-sm border border-purple-500/20 rounded-xl p-8 mt-20">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-white">Platform Statistics</h2>
-            <p className="text-purple-200 mt-2">See how our AI tools platform is growing</p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div className="bg-gradient-to-br from-purple-600/20 to-indigo-600/20 rounded-lg p-4 border border-purple-500/20">
-              <div className="text-3xl font-bold text-purple-400 mb-2">∞</div>
-              <div className="text-purple-200">AI Tools Shared</div>
-            </div>
-            <div className="bg-gradient-to-br from-green-600/20 to-teal-600/20 rounded-lg p-4 border border-green-500/20">
-              <div className="text-3xl font-bold text-green-400 mb-2">∞</div>
-              <div className="text-purple-200">Team Members</div>
-            </div>
-            <div className="bg-gradient-to-br from-pink-600/20 to-purple-600/20 rounded-lg p-4 border border-pink-500/20">
-              <div className="text-3xl font-bold text-pink-400 mb-2">∞</div>
-              <div className="text-purple-200">Categories</div>
-            </div>
-            <div className="bg-gradient-to-br from-orange-600/20 to-red-600/20 rounded-lg p-4 border border-orange-500/20">
-              <div className="text-3xl font-bold text-orange-400 mb-2">∞</div>
-              <div className="text-purple-200">Success Stories</div>
-            </div>
-          </div>
-        </div>
-
-        {/* CTA Section */}
-        <div className="text-center mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Ready to explore AI tools?
-          </h2>
-          <p className="text-gray-600 mb-8">
-            Join your colleagues in discovering and sharing the latest AI technologies.
-          </p>
-          <Link
-            href="/tools"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-          >
-            Get Started
-          </Link>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <div className="flex items-center justify-center space-x-3 mb-4">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">AI</span>
-              </div>
-              <span className="text-xl font-bold">SoftArt VibeCode</span>
-            </div>
-            <p className="text-gray-400 mb-4">
-              Empowering teams with AI tools and collaboration
-            </p>
-            <p className="text-sm text-gray-500">
-              © 2025 SoftArt VibeCode. Internal AI Tools Platform.
-            </p>
-          </div>
+      <footer style={{
+        background: '#111827',
+        color: 'white',
+        marginTop: '5rem',
+        padding: '3rem 0',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Footer background elements */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at 30% 20%, rgba(124, 58, 237, 0.05) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(55, 48, 163, 0.05) 0%, transparent 50%)',
+          pointerEvents: 'none'
+        }}></div>
+
+        <div style={{
+          maxWidth: '80rem',
+          margin: '0 auto',
+          padding: '0 1rem',
+          textAlign: 'center',
+          position: 'relative',
+          zIndex: 1,
+          opacity: isLoaded ? 1 : 0,
+          transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
+          transition: 'all 0.8s ease-out 0.5s'
+        }}>
+          <h2 style={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            color: '#f472b6',
+            margin: '0 0 1rem 0'
+          }}>
+            SoftArt AI HUB
+          </h2>
+          <p style={{
+            color: '#9ca3af',
+            marginBottom: '1rem',
+            fontSize: '1rem'
+          }}>
+            Empowering teams with AI tools and collaboration
+          </p>
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#6b7280',
+            fontWeight: '300'
+          }}>
+            © 2025 SoftArt AI HUB. Internal AI Tools Platform.
+          </p>
         </div>
       </footer>
     </div>
@@ -226,8 +601,3 @@ const Home: NextPage = () => {
 };
 
 export default Home;
-
-
-
-
-

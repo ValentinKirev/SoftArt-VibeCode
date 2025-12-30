@@ -1,4 +1,4 @@
-# SoftArt VibeCode - Docker Commands
+# SoftArt AI HUB - Docker Commands
 
 .PHONY: help up down build rebuild logs clean install migrate seed test
 

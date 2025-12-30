@@ -1,4 +1,4 @@
-# SoftArt VibeCode - Docker Development Environment
+# SoftArt AI HUB - Docker Development Environment
 
 A complete Docker Compose setup for a full-stack web application with Laravel backend, Next.js frontend, MySQL database, Redis cache, and Nginx reverse proxy.
 
@@ -206,7 +206,7 @@ docker-compose up -d
 
 ## License
 
-This project is part of the SoftArt VibeCode application.
+This project is part of the SoftArt AI HUB application.
 
 
 

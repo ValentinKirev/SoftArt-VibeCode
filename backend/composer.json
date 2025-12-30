@@ -1,7 +1,7 @@
 {
-    "name": "softart/vibecode-backend",
+    "name": "softart/aihub-backend",
     "type": "project",
-    "description": "SoftArt VibeCode Laravel Backend",
+    "description": "SoftArt AI HUB Laravel Backend",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
