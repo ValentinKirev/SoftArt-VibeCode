@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -20,8 +21,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
-        'is_active',
     ];
 
     /**
@@ -42,45 +41,5 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-        'is_active' => 'boolean',
     ];
-
-    /**
-     * Get the AI tools shared by this user.
-     */
-    public function aiTools()
-    {
-        return $this->hasMany(AiTool::class);
-    }
-
-    /**
-     * Scope to get active users only.
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    /**
-     * Scope to get users by role.
-     */
-    public function scopeByRole($query, $role)
-    {
-        return $query->where('role', $role);
-    }
-
-    /**
-     * Get role options for forms.
-     */
-    public static function getRoleOptions()
-    {
-        return [
-            'Owner' => 'Owner',
-            'Backend' => 'Backend Developer',
-            'Frontend' => 'Frontend Developer',
-            'PM' => 'Product Manager',
-            'QA' => 'Quality Assurance',
-            'Designer' => 'Designer',
-        ];
-    }
 }
