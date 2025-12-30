@@ -241,7 +241,9 @@ export default function ToolsIndex() {
                     )}
 
                     <div className="flex justify-between items-center text-sm text-gray-500">
-                      <span>By {tool.author_name}</span>
+                      <span>
+                        By {tool.user ? `${tool.user.name} (${tool.user.role})` : tool.author_name}
+                      </span>
                       <span>{new Date(tool.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { AiToolForm } from '../../types/ai-tools';
+import { AiToolForm, User } from '../../types/ai-tools';
 import { apiClient } from '../../lib/api';
 
 export default function NewTool() {
@@ -10,6 +10,7 @@ export default function NewTool() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
+  const [users, setUsers] = useState<User[]>([]);
 
   const [formData, setFormData] = useState<AiToolForm>({
     name: '',
@@ -19,6 +20,7 @@ export default function NewTool() {
     url: '',
     documentation_url: '',
     github_url: '',
+    user_id: 0,
     author_name: '',
     author_email: '',
     team: '',
@@ -28,6 +30,19 @@ export default function NewTool() {
     cons: '',
     rating: 3,
   });
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      const response = await apiClient.getUsers();
+      setUsers(response.data);
+    } catch (err) {
+      console.error('Error loading users:', err);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -198,6 +213,12 @@ export default function NewTool() {
                   <option value="DevOps">DevOps</option>
                   <option value="Web Development">Web Development</option>
                   <option value="Mobile Development">Mobile Development</option>
+                  <option value="Design Tools">Design Tools</option>
+                  <option value="Testing">Testing</option>
+                  <option value="Authentication">Authentication</option>
+                  <option value="API Development">API Development</option>
+                  <option value="AI Services">AI Services</option>
+                  <option value="Frontend Framework">Frontend Framework</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
@@ -215,6 +236,32 @@ export default function NewTool() {
                   placeholder="e.g., AI Team, Data Science Team"
                 />
               </div>
+            </div>
+
+            {/* User Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Shared By *
+              </label>
+              <select
+                name="user_id"
+                required
+                value={formData.user_id}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData((prev: AiToolForm) => ({ ...prev, user_id: parseInt(e.target.value) }))}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  getFieldError('user_id') ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                <option value={0}>Select Team Member</option>
+                {users.map((user: User) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.role})
+                  </option>
+                ))}
+              </select>
+              {getFieldError('user_id') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('user_id')}</p>
+              )}
             </div>
 
             {/* URLs */}

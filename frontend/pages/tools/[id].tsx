@@ -127,15 +127,19 @@ export default function ToolDetail() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium text-gray-900">Author:</span>
-                  <span className="ml-2 text-gray-700">{tool.author_name}</span>
-                  {tool.author_email && (
-                    <a
-                      href={`mailto:${tool.author_email}`}
-                      className="ml-2 text-blue-600 hover:text-blue-800"
-                    >
-                      ({tool.author_email})
-                    </a>
+                  <span className="font-medium text-gray-900">Shared by:</span>
+                  {tool.user ? (
+                    <span className="ml-2 text-gray-700">
+                      {tool.user.name} ({tool.user.role})
+                      <a
+                        href={`mailto:${tool.user.email}`}
+                        className="ml-2 text-blue-600 hover:text-blue-800"
+                      >
+                        ({tool.user.email})
+                      </a>
+                    </span>
+                  ) : (
+                    <span className="ml-2 text-gray-700">{tool.author_name}</span>
                   )}
                 </div>
 

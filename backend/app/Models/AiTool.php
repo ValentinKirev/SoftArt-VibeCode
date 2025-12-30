@@ -34,6 +34,14 @@ class AiTool extends Model
         'rating' => 'integer',
     ];
 
+    /**
+     * Get the user that shared this AI tool.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

@@ -1,6 +1,7 @@
 import {
   AiTool,
   AiToolForm,
+  User,
   ApiResponse,
   PaginatedResponse,
   FilterOptions
@@ -90,6 +91,15 @@ class ApiClient {
 
   async getTags(): Promise<ApiResponse<string[]>> {
     return this.request<ApiResponse<string[]>>('/ai-tools-meta/tags');
+  }
+
+  // Users API methods
+  async getUsers(): Promise<ApiResponse<User[]>> {
+    return this.request<ApiResponse<User[]>>('/users');
+  }
+
+  async getUser(id: number): Promise<ApiResponse<User>> {
+    return this.request<ApiResponse<User>>(`/users/${id}`);
   }
 }
 

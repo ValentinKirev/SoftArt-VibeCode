@@ -1,3 +1,10 @@
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'Owner' | 'Backend' | 'Frontend' | 'PM' | 'QA' | 'Designer';
+}
+
 export interface AiTool {
   id: number;
   name: string;
@@ -7,7 +14,8 @@ export interface AiTool {
   url?: string;
   documentation_url?: string;
   github_url?: string;
-  author_name: string;
+  user_id: number;
+  author_name?: string;
   author_email?: string;
   team?: string;
   tags?: string[];
@@ -18,6 +26,7 @@ export interface AiTool {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  user?: User;
 }
 
 export interface AiToolForm {
@@ -28,7 +37,8 @@ export interface AiToolForm {
   url?: string;
   documentation_url?: string;
   github_url?: string;
-  author_name: string;
+  user_id: number;
+  author_name?: string;
   author_email?: string;
   team?: string;
   tags?: string[];

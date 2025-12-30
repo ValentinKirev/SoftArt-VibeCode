@@ -60,7 +60,7 @@ class AiToolController extends Controller
             $query->orderBy($sortBy, $sortOrder);
         }
 
-        $tools = $query->paginate($request->get('per_page', 15));
+        $tools = $query->with('user:id,name,email,role')->paginate($request->get('per_page', 15));
 
         return response()->json([
             'success' => true,
@@ -82,7 +82,8 @@ class AiToolController extends Controller
             'url' => 'nullable|url',
             'documentation_url' => 'nullable|url',
             'github_url' => 'nullable|url',
-            'author_name' => 'required|string|max:255',
+            'user_id' => 'required|exists:users,id',
+            'author_name' => 'nullable|string|max:255', // Now optional since we have user_id
             'author_email' => 'nullable|email|max:255',
             'team' => 'nullable|string|max:100',
             'tags' => 'nullable|array',
@@ -135,7 +136,8 @@ class AiToolController extends Controller
             'url' => 'nullable|url',
             'documentation_url' => 'nullable|url',
             'github_url' => 'nullable|url',
-            'author_name' => 'sometimes|required|string|max:255',
+            'user_id' => 'sometimes|exists:users,id',
+            'author_name' => 'nullable|string|max:255',
             'author_email' => 'nullable|email|max:255',
             'team' => 'nullable|string|max:100',
             'tags' => 'nullable|array',

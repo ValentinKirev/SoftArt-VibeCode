@@ -9,7 +9,7 @@ services:
     volumes:
       - ./backend:/var/www:cached
       - ./backend/vendor:/var/www/vendor:cached
-    command: php-fpm
+    command: php -S 0.0.0.0:8000 -t public
     ports:
       - "8000:8000"
 
