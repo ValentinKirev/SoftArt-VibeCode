@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Laravel Backend - Development overrides
+  laravel:
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+    volumes:
+      - ./backend:/var/www:cached
+      - ./backend/vendor:/var/www/vendor:cached
+    command: php-fpm
+    ports:
+      - "8000:8000"
+
+  # Next.js Frontend - Development overrides
+  nextjs:
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+    command: npm run dev
+    ports:
+      - "3000:3000"
+
+  # MySQL - Development overrides
+  mysql:
+    ports:
+      - "3306:3306"
+
+  # Redis - Development overrides
+  redis:
+    ports:
+      - "6379:6379"
+
+  # Nginx - Development overrides (optional - can be disabled for direct access)
+  nginx:
+    profiles:
+      - production
+    ports:
+      - "80:80"
+      - "443:443"
+
+  # Development tools
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - laravel
+    profiles:
+      - dev-tools
+
+
+
+

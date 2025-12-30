@@ -1,0 +1,29 @@
+---
+alwaysApply: true
+---
+The project leverages a robust Laravel backend for API management and business logic, coupled with a Next.js frontend built with React and TypeScript for a highly interactive and type-safe user interface.
+
+Key Features & Architecture:
+
+Backend: Laravel serves as the API backbone, handling authentication, data validation, and complex business logic.
+
+Frontend: Next.js with React and TypeScript ensures server-side rendering, fast page loads, and maintainable, strongly-typed components.
+
+Database: MySQL stores all relational data, providing reliable and structured persistence.
+
+Caching: Redis is used to cache frequently accessed data, optimizing performance and reducing database load.
+
+Server: Nginx serves as a high-performance web server and reverse proxy, ensuring efficient request handling and scalability.
+
+Highlights:
+
+Scalable architecture combining a powerful PHP backend with a modern React frontend.
+
+Optimized for performance with Redis caching and Nginx server configuration.
+
+Type-safe frontend with TypeScript, enabling maintainable and bug-resistant code.
+
+MySQL ensures reliable relational data management.
+
+Goal:
+To create a responsive, high-performance web platform that efficiently manages dynamic content and user interactions, combining modern frontend technologies with a reliable, feature-rich backend.
