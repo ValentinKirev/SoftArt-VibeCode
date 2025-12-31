@@ -85,8 +85,8 @@ switch ($request_method) {
                 exit;
             }
 
-            // Query user from database
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+            // Query user from database with role
+            $stmt = $pdo->prepare("SELECT u.*, r.name as role_name, r.slug as role_slug FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -99,7 +99,7 @@ switch ($request_method) {
                         'id' => $user['id'],
                         'name' => $user['name'],
                         'email' => $user['email'],
-                        'role' => $user['role'] ?? 'user'
+                        'role' => $user['role_slug'] ?? 'user'
                     ],
                     'token' => $token
                 ]);
@@ -129,8 +129,8 @@ switch ($request_method) {
             if (preg_match('/laravel-token-(\d+)-/', $token, $matches)) {
                 $user_id = $matches[1];
                 
-                // Query user from database
-                $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+                // Query user from database with role
+                $stmt = $pdo->prepare("SELECT u.*, r.name as role_name, r.slug as role_slug FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?");
                 $stmt->execute([$user_id]);
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 
@@ -140,7 +140,7 @@ switch ($request_method) {
                             'id' => $user['id'],
                             'name' => $user['name'],
                             'email' => $user['email'],
-                            'role' => $user['role'] ?? 'user'
+                            'role' => $user['role_slug'] ?? 'user'
                         ]
                     ]);
                 } else {
