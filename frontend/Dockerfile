@@ -4,17 +4,17 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for development)
+# Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy the remaining source code
 COPY . .
 
-# Expose port 3000
-EXPOSE 3000
+# Expose port 3001 (match docker-compose)
+EXPOSE 3001
 
-# Start the application in development mode
+# Start the app
 CMD ["npm", "run", "dev"]

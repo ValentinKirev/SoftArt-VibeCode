@@ -3,6 +3,20 @@
 
 define('LARAVEL_START', microtime(true));
 
+// #region agent log E1 - Artisan start
+$logFile = __DIR__ . '/storage/logs/debug.log';
+$logData = json_encode([
+    'timestamp' => time(),
+    'location' => 'artisan:4',
+    'message' => 'Artisan execution started',
+    'data' => ['laravel_start' => LARAVEL_START],
+    'sessionId' => 'debug-session',
+    'runId' => 'hypothesis-test',
+    'hypothesisId' => 'E'
+]) . "\n";
+file_put_contents($logFile, $logData, FILE_APPEND | LOCK_EX);
+// #endregion
+
 /*
 |--------------------------------------------------------------------------
 | Register The Auto Loader
@@ -17,7 +31,33 @@ define('LARAVEL_START', microtime(true));
 
 require __DIR__.'/vendor/autoload.php';
 
+// #region agent log E2 - Autoloader loaded
+$logData = json_encode([
+    'timestamp' => time(),
+    'location' => 'artisan:18',
+    'message' => 'Composer autoloader loaded successfully',
+    'data' => [],
+    'sessionId' => 'debug-session',
+    'runId' => 'hypothesis-test',
+    'hypothesisId' => 'E'
+]) . "\n";
+file_put_contents($logFile, $logData, FILE_APPEND | LOCK_EX);
+// #endregion
+
 $app = require_once __DIR__.'/bootstrap/app.php';
+
+// #region agent log E3 - Bootstrap loaded
+$logData = json_encode([
+    'timestamp' => time(),
+    'location' => 'artisan:20',
+    'message' => 'Bootstrap/app.php loaded successfully',
+    'data' => ['app_class' => get_class($app)],
+    'sessionId' => 'debug-session',
+    'runId' => 'hypothesis-test',
+    'hypothesisId' => 'E'
+]) . "\n";
+file_put_contents($logFile, $logData, FILE_APPEND | LOCK_EX);
+// #endregion
 
 /*
 |--------------------------------------------------------------------------

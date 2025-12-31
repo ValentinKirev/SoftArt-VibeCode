@@ -45,3 +45,18 @@ If logo images are not found, the application will automatically fall back to di
 - Use vector formats (SVG) when possible for crisp scaling
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

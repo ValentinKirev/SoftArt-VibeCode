@@ -27,7 +27,29 @@ class Handler extends ExceptionHandler
             //
         });
     }
+
+    /**
+     * Render an exception into an HTTP response.
+     */
+    public function render($request, Throwable $exception)
+    {
+        // Return JSON response for API requests
+        if ($request->is('api/*')) {
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $exception->getMessage()
+            ], 500);
+        }
+
+        return parent::render($request, $exception);
+    }
 }
+
+
+
+
+
+
 
 
 

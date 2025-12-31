@@ -37,7 +37,9 @@ RUN mkdir -p /var/www/storage /var/www/bootstrap/cache \
     && chmod -R 755 /var/www/storage \
     && chmod -R 755 /var/www/bootstrap/cache
 
-# Expose port 9000 and start php-fpm server
+# Expose port 9000 for PHP-FPM
 EXPOSE 9000
+
+# Start PHP-FPM server
 CMD ["php-fpm"]
 
