@@ -64,7 +64,7 @@ docker-compose exec frontend npm install
 
 After running the start script, you can access:
 
-- **Frontend**: http://localhost:3001
+- **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/api/test
 
@@ -100,6 +100,27 @@ docker-compose restart frontend
 # Check frontend logs
 docker-compose logs frontend
 ```
+
+### User Still Logged In After Fresh Start?
+If you run the start script but still see a logged-in user:
+
+```bash
+# 1. Clear browser data manually:
+# Chrome/Edge: Ctrl+Shift+Delete, then "Clear browsing data"
+# Firefox: Ctrl+Shift+Delete, then "Clear Data"
+
+# 2. Restart containers with full clear:
+docker-compose down -v
+docker-compose up --build -d
+
+# 3. Run start script again
+./start.sh  # or .\start.ps1
+
+# 4. Try incognito/private browsing mode
+# Open http://localhost:3000 in incognito mode
+```
+
+The start script clears ALL authentication data, so if you still see a logged user, it's likely browser cookies or cached data that needs manual clearing.
 
 ## 📊 Default Credentials
 
@@ -177,10 +198,11 @@ docker-compose exec laravel_backend php artisan migrate:fresh --seed
 2. **Database Setup**
    - Waits for MySQL to be ready
    - Runs **fresh migrations** (drops all tables and recreates)
-   - Clears Laravel cache
+   - **Clears authentication data safely** (cache, sessions, tokens)
    - **Clears all user sessions** (ensures no logged user)
    - Runs database seeders
    - Runs additional seeders to ensure complete data population
+   - **Verifies database setup** with migration status check
 
 3. **Frontend Setup**
    - Checks for missing dependencies
@@ -195,12 +217,16 @@ docker-compose exec laravel_backend php artisan migrate:fresh --seed
 
 The start script ensures a **completely fresh start** each time:
 - ✅ **All database tables are dropped and recreated**
+- ✅ **Authentication data cleared safely** (cache, sessions, tokens)
 - ✅ **All user sessions are cleared**
 - ✅ **No user will be logged in** after startup
 - ✅ **All seed data is freshly populated**
 - ✅ **Cache is completely cleared**
+- ✅ **Laravel structure preserved** (no broken directories)
+- ✅ **Database setup verified** (migration status check)
+- ✅ **Boolean fields properly handled** (no database errors)
 
-This means every time you run the start script, you get a clean slate with no logged users and fresh test data.
+This means every time you run the start script, you get a clean slate with no logged users, fresh test data, a working authentication system, and verified database integrity.
 
 ## 🔄 Reset Everything
 
@@ -223,14 +249,14 @@ If you encounter issues:
 
 1. Check Docker is running: `docker info`
 2. Check container logs: `docker-compose logs`
-3. Verify ports aren't in use: 3001, 8000, 3306
+3. Verify ports aren't in use: 3000, 8000, 3306
 4. Ensure sufficient disk space and memory
 
 ## 🎯 Next Steps
 
 Once the application is running:
 
-1. Open http://localhost:3001 in your browser
+1. Open http://localhost:3000 in your browser
 2. Login with test credentials
 3. Explore the dashboard and tools management
 4. Test the tool editing functionality

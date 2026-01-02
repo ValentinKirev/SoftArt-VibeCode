@@ -80,6 +80,18 @@ docker-compose exec laravel_backend php artisan session:table
 docker-compose exec laravel_backend php artisan migrate --force
 docker-compose exec laravel_backend php artisan auth:clear-resets
 
+REM Clear Laravel cache and authentication data (safe commands only)
+echo [STEP] Clearing all authentication data...
+docker-compose exec laravel_backend php artisan cache:clear
+docker-compose exec laravel_backend php artisan config:clear
+docker-compose exec laravel_backend php artisan route:clear
+docker-compose exec laravel_backend php artisan view:clear
+
+REM Clear session storage safely (preserve directory structure)
+echo [STEP] Clearing session storage and tokens...
+docker-compose exec laravel_backend php artisan session:flush
+docker-compose exec laravel_backend php artisan cache:flush
+
 REM Run database seeders
 echo [STEP] Running database seeders...
 docker-compose exec laravel_backend php artisan db:seed --force
@@ -87,6 +99,10 @@ docker-compose exec laravel_backend php artisan db:seed --force
 REM Additional seeder commands to ensure all data is populated
 echo [STEP] Running additional seeders...
 docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force
+
+REM Verify database setup
+echo [STEP] Verifying database setup...
+docker-compose exec laravel_backend php artisan migrate:status
 
 REM Install frontend dependencies if needed
 echo [STEP] Checking frontend dependencies...
@@ -100,7 +116,7 @@ REM Show final status
 echo [INFO] Application setup complete! ✓
 echo.
 echo 🌐 Application URLs:
-echo    Frontend: http://localhost:3001
+echo    Frontend: http://localhost:3000
 echo    Backend API: http://localhost:8000
 echo.
 echo 📊 Container Status:

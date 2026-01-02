@@ -17,7 +17,7 @@ class ApiAuthenticatedSessionController extends Controller
     public function store(Request $request)
     {
         try {
-            Log::info('API LOGIN CONTROLLER CALLED!', ['email' => $request->email]);
+            Log::info('API LOGIN CONTROLLER CALLED!', ['email' => $request->email, 'request_method' => $request->method()]);
             
             $request->validate([
                 'email' => 'required|email',

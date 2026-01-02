@@ -59,28 +59,31 @@ Route::get('/user', function (Request $request) {
         'user_name' => $user->name,
         'role_id' => $user->role_id,
         'role_name' => $roleName,
-        'raw_role_object' => $user->role_id ? \App\Models\Role::find($user->role_id) : null,
+        'role_slug' => $roleSlug,
+        'role_object' => [
+            'id' => $roleId,
+            'name' => $roleName,
+            'slug' => $roleSlug,
+        ]
     ];
-    Log::info('API User Debug', $debugData);
-    file_put_contents('/tmp/debug.log', json_encode($debugData) . PHP_EOL, FILE_APPEND);
+    
+    Log::info('API User endpoint accessed', $debugData);
     
     return response()->json([
-        'user' => [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'role_id' => $user->role_id,
-            'role' => [
-                'id' => $roleId,
-                'name' => $roleName,
-                'slug' => $roleSlug,
-            ],
-            'email_verified_at' => $user->email_verified_at,
-            'created_at' => $user->created_at,
-            'updated_at' => $user->updated_at,
-        ]
-    ], 200);
-})->middleware('auth:sanctum');
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'role_id' => $user->role_id,
+        'role' => [
+            'id' => $roleId,
+            'name' => $roleName,
+            'slug' => $roleSlug,
+        ],
+        'email_verified_at' => $user->email_verified_at,
+        'created_at' => $user->created_at,
+        'updated_at' => $user->updated_at,
+    ]);
+});
 
 // Categories CRUD routes
 Route::get('/categories', function () {

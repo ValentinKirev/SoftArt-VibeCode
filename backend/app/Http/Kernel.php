@@ -64,9 +64,10 @@ class Kernel extends HttpKernel
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
         'precognitive' => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
-        'signed' => \App\Http\Middleware\ValidateSignature::class,
+        'signed' => \Illuminate\Http\Middleware\ValidateSignature::class,
         'subscribed' => \Spark\Http\Middleware\VerifyBillableIsSubscribed::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-        'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
+        'verified' => \Illuminate\Http\Middleware\EnsureEmailIsVerified::class,
+        'simple.token' => \App\Http\Middleware\SimpleTokenAuth::class,
     ];
 }

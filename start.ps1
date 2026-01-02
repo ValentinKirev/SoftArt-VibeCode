@@ -98,6 +98,18 @@ docker-compose exec laravel_backend php artisan session:table
 docker-compose exec laravel_backend php artisan migrate --force
 docker-compose exec laravel_backend php artisan auth:clear-resets
 
+# Clear Laravel cache and authentication data (safe commands only)
+Write-Step "Clearing all authentication data..."
+docker-compose exec laravel_backend php artisan cache:clear
+docker-compose exec laravel_backend php artisan config:clear
+docker-compose exec laravel_backend php artisan route:clear
+docker-compose exec laravel_backend php artisan view:clear
+
+# Clear session storage safely (preserve directory structure)
+Write-Step "Clearing session storage and tokens..."
+docker-compose exec laravel_backend php artisan session:flush
+docker-compose exec laravel_backend php artisan cache:flush
+
 # Run database seeders
 Write-Step "Running database seeders..."
 docker-compose exec laravel_backend php artisan db:seed --force
@@ -105,6 +117,10 @@ docker-compose exec laravel_backend php artisan db:seed --force
 # Additional seeder commands to ensure all data is populated
 Write-Step "Running additional seeders..."
 docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force
+
+# Verify database setup
+Write-Step "Verifying database setup..."
+docker-compose exec laravel_backend php artisan migrate:status
 
 # Install frontend dependencies if needed
 Write-Step "Checking frontend dependencies..."
@@ -119,7 +135,7 @@ try {
 Write-Status "Application setup complete! ✓"
 Write-Host ""
 Write-Host "🌐 Application URLs:" -ForegroundColor Cyan
-Write-Host "   Frontend: http://localhost:3001"
+Write-Host "   Frontend: http://localhost:3000"
 Write-Host "   Backend API: http://localhost:8000"
 Write-Host ""
 Write-Host "📊 Container Status:" -ForegroundColor Cyan

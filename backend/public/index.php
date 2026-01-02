@@ -29,6 +29,9 @@ function get_http_headers() {
 $request_uri = $_SERVER['REQUEST_URI'] ?? '';
 $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+// Debug logging
+error_log("CUSTOM ROUTER: Received request: $request_method $request_uri");
+
 // Parse the URI to get the endpoint
 $endpoint = str_replace('/api', '', $request_uri);
 $endpoint = strtok($endpoint, '?');
@@ -40,9 +43,12 @@ $username = 'vibecode_user';
 $password = 'secure_password';
 
 try {
+    error_log("Attempting database connection: host=$host, dbname=$dbname, username=$username");
     $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    error_log("Database connection successful");
 } catch (PDOException $e) {
+    error_log("Database connection failed: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
     exit;
@@ -489,15 +495,15 @@ switch ($request_method) {
             }
             if (isset($input['is_active'])) {
                 $update_fields[] = 'is_active = ?';
-                $params[] = $input['is_active'];
+                $params[] = $input['is_active'] ? 1 : 0;
             }
             if (isset($input['requires_auth'])) {
                 $update_fields[] = 'requires_auth = ?';
-                $params[] = $input['requires_auth'];
+                $params[] = $input['requires_auth'] ? 1 : 0;
             }
             if (isset($input['api_key_required'])) {
                 $update_fields[] = 'api_key_required = ?';
-                $params[] = $input['api_key_required'];
+                $params[] = $input['api_key_required'] ? 1 : 0;
             }
             // Skip sort_order - not in database
             
