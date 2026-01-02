@@ -63,9 +63,13 @@ goto db_loop
 
 :db_ready
 
-REM Run Laravel migrations (fresh start)
+REM Run Laravel migrations (fresh start) - GUARANTEED
 echo [STEP] Running fresh Laravel migrations...
 docker-compose exec laravel_backend php artisan migrate:fresh --force
+if %errorlevel% neq 0 (
+    echo [ERROR] Migrations failed! Please check the logs.
+    exit /b 1
+)
 
 REM Clear Laravel cache
 echo [STEP] Clearing Laravel cache...
@@ -92,17 +96,37 @@ echo [STEP] Clearing session storage and tokens...
 docker-compose exec laravel_backend php artisan session:flush
 docker-compose exec laravel_backend php artisan cache:flush
 
-REM Run database seeders
+REM Run database seeders - GUARANTEED
 echo [STEP] Running database seeders...
 docker-compose exec laravel_backend php artisan db:seed --force
+if %errorlevel% neq 0 (
+    echo [ERROR] Database seeders failed! Please check the logs.
+    exit /b 1
+)
 
-REM Additional seeder commands to ensure all data is populated
+REM Additional seeder commands to ensure all data is populated - GUARANTEED
 echo [STEP] Running additional seeders...
 docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force
+if %errorlevel% neq 0 (
+    echo [ERROR] Additional seeders failed! Please check the logs.
+    exit /b 1
+)
 
-REM Verify database setup
+REM Verify database setup - GUARANTEED
 echo [STEP] Verifying database setup...
 docker-compose exec laravel_backend php artisan migrate:status
+if %errorlevel% neq 0 (
+    echo [ERROR] Migration status check failed! Please check the logs.
+    exit /b 1
+)
+
+REM Verify tables exist - GUARANTEED
+echo [STEP] Verifying tables exist...
+docker-compose exec laravel_backend php artisan tinker --execute="DB::select('SHOW TABLES');" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Table verification failed! Please check the logs.
+    exit /b 1
+)
 
 REM Install frontend dependencies if needed
 echo [STEP] Checking frontend dependencies...

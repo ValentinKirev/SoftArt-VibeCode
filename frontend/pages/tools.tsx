@@ -1273,6 +1273,7 @@ const ToolsPageContent: React.FC = () => {
               onViewTool={handleViewTool}
               onToolDeleted={handleToolDeleted}
               onToolDeletedSuccess={handleToolDeletedSuccess}
+              user={user}
               resetPagination={resetPagination}
               enablePagination={false}
             />

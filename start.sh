@@ -77,9 +77,12 @@ for i in {1..30}; do
     sleep 1
 done
 
-# Run Laravel migrations (fresh start)
+# Run Laravel migrations (fresh start) - GUARANTEED
 print_step "Running fresh Laravel migrations..."
-docker-compose exec laravel_backend php artisan migrate:fresh --force
+if ! docker-compose exec laravel_backend php artisan migrate:fresh --force; then
+    print_error "Migrations failed! Please check the logs."
+    exit 1
+fi
 
 # Clear Laravel cache
 print_step "Clearing Laravel cache..."
@@ -106,17 +109,33 @@ print_step "Clearing session storage and tokens..."
 docker-compose exec laravel_backend php artisan session:flush
 docker-compose exec laravel_backend php artisan cache:flush
 
-# Run database seeders
+# Run database seeders - GUARANTEED
 print_step "Running database seeders..."
-docker-compose exec laravel_backend php artisan db:seed --force
+if ! docker-compose exec laravel_backend php artisan db:seed --force; then
+    print_error "Database seeders failed! Please check the logs."
+    exit 1
+fi
 
-# Additional seeder commands to ensure all data is populated
+# Additional seeder commands to ensure all data is populated - GUARANTEED
 print_step "Running additional seeders..."
-docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force
+if ! docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force; then
+    print_error "Additional seeders failed! Please check the logs."
+    exit 1
+fi
 
-# Verify database setup
+# Verify database setup - GUARANTEED
 print_step "Verifying database setup..."
-docker-compose exec laravel_backend php artisan migrate:status
+if ! docker-compose exec laravel_backend php artisan migrate:status; then
+    print_error "Migration status check failed! Please check the logs."
+    exit 1
+fi
+
+# Verify tables exist - GUARANTEED
+print_step "Verifying tables exist..."
+if ! docker-compose exec laravel_backend php artisan tinker --execute="DB::select('SHOW TABLES');" > /dev/null 2>&1; then
+    print_error "Table verification failed! Please check the logs."
+    exit 1
+fi
 
 # Install frontend dependencies if needed
 print_step "Checking frontend dependencies..."

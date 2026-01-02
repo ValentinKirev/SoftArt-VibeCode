@@ -81,9 +81,15 @@ for ($i = 1; $i -le 30; $i++) {
     }
 }
 
-# Run Laravel migrations (fresh start)
+# Run Laravel migrations (fresh start) - GUARANTEED
 Write-Step "Running fresh Laravel migrations..."
-docker-compose exec laravel_backend php artisan migrate:fresh --force
+try {
+    docker-compose exec laravel_backend php artisan migrate:fresh --force
+    if ($LASTEXITCODE -ne 0) { throw "Migrations failed" }
+} catch {
+    Write-Error "Migrations failed! Please check the logs."
+    exit 1
+}
 
 # Clear Laravel cache
 Write-Step "Clearing Laravel cache..."
@@ -110,17 +116,45 @@ Write-Step "Clearing session storage and tokens..."
 docker-compose exec laravel_backend php artisan session:flush
 docker-compose exec laravel_backend php artisan cache:flush
 
-# Run database seeders
+# Run database seeders - GUARANTEED
 Write-Step "Running database seeders..."
-docker-compose exec laravel_backend php artisan db:seed --force
+try {
+    docker-compose exec laravel_backend php artisan db:seed --force
+    if ($LASTEXITCODE -ne 0) { throw "Database seeders failed" }
+} catch {
+    Write-Error "Database seeders failed! Please check the logs."
+    exit 1
+}
 
-# Additional seeder commands to ensure all data is populated
+# Additional seeder commands to ensure all data is populated - GUARANTEED
 Write-Step "Running additional seeders..."
-docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force
+try {
+    docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force
+    if ($LASTEXITCODE -ne 0) { throw "Additional seeders failed" }
+} catch {
+    Write-Error "Additional seeders failed! Please check the logs."
+    exit 1
+}
 
-# Verify database setup
+# Verify database setup - GUARANTEED
 Write-Step "Verifying database setup..."
-docker-compose exec laravel_backend php artisan migrate:status
+try {
+    docker-compose exec laravel_backend php artisan migrate:status
+    if ($LASTEXITCODE -ne 0) { throw "Migration status check failed" }
+} catch {
+    Write-Error "Migration status check failed! Please check the logs."
+    exit 1
+}
+
+# Verify tables exist - GUARANTEED
+Write-Step "Verifying tables exist..."
+try {
+    docker-compose exec laravel_backend php artisan tinker --execute="DB::select('SHOW TABLES');" 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "Table verification failed" }
+} catch {
+    Write-Error "Table verification failed! Please check the logs."
+    exit 1
+}
 
 # Install frontend dependencies if needed
 Write-Step "Checking frontend dependencies..."

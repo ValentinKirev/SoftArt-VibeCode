@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Toast from './Toast';
 import ConfirmDialog from './ConfirmDialog';
+import { useAuth } from '../hooks/useAuth';
 
 interface Tool {
   id: number;
@@ -29,9 +30,29 @@ interface ToolListProps {
   onToolDeletedSuccess?: (message: string) => void;
   resetPagination?: boolean;
   enablePagination?: boolean;
+  user?: any; // Add user prop
 }
 
-const ToolList: React.FC<ToolListProps> = ({ tools: propsTools, onEditTool, onViewTool, refreshTrigger, onToolDeleted, onToolCreated, onToolDeletedSuccess, resetPagination, enablePagination = false }) => {
+const ToolList: React.FC<ToolListProps> = ({ tools: propsTools, onEditTool, onViewTool, refreshTrigger, onToolDeleted, onToolCreated, onToolDeletedSuccess, resetPagination, enablePagination = false, user }) => {
+  const { user: authUser } = useAuth(); // Get user from useAuth
+  const currentUser = user || authUser; // Use passed user or fallback to authUser
+  // Helper function to check if user is Owner
+  const isOwner = (user: any): boolean => {
+    if (!user) return false;
+    
+    // Check if user.role is a string and equals 'owner'
+    if (typeof user.role === 'string') {
+      return user.role.toLowerCase() === 'owner';
+    }
+    
+    // Check if user.role is an object with name property
+    if (typeof user.role === 'object' && user.role?.name) {
+      return user.role.name.toLowerCase() === 'owner';
+    }
+    
+    return false;
+  };
+
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
@@ -394,42 +415,46 @@ const ToolList: React.FC<ToolListProps> = ({ tools: propsTools, onEditTool, onVi
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditTool(tool);
-                      }}
-                      style={{
-                        background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteTool(tool.id, tool.name);
-                      }}
-                      style={{
-                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {isOwner(currentUser) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditTool(tool);
+                        }}
+                        style={{
+                          background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {isOwner(currentUser) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTool(tool.id, tool.name);
+                        }}
+                        style={{
+                          background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               ))

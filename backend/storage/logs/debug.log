@@ -2141,3 +2141,18 @@
 {"timestamp":1767389648,"location":"artisan:4","message":"Artisan execution started","data":{"laravel_start":1767389648.142871},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
 {"timestamp":1767389649,"location":"artisan:18","message":"Composer autoloader loaded successfully","data":[],"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
 {"timestamp":1767389649,"location":"artisan:20","message":"Bootstrap\/app.php loaded successfully","data":{"app_class":"Illuminate\\Foundation\\Application"},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767389985,"location":"artisan:4","message":"Artisan execution started","data":{"laravel_start":1767389985.67954},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767389987,"location":"artisan:18","message":"Composer autoloader loaded successfully","data":[],"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767389987,"location":"artisan:20","message":"Bootstrap\/app.php loaded successfully","data":{"app_class":"Illuminate\\Foundation\\Application"},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390094,"location":"artisan:4","message":"Artisan execution started","data":{"laravel_start":1767390094.707521},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390096,"location":"artisan:18","message":"Composer autoloader loaded successfully","data":[],"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390096,"location":"artisan:20","message":"Bootstrap\/app.php loaded successfully","data":{"app_class":"Illuminate\\Foundation\\Application"},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390109,"location":"artisan:4","message":"Artisan execution started","data":{"laravel_start":1767390109.40702},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390110,"location":"artisan:18","message":"Composer autoloader loaded successfully","data":[],"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390110,"location":"artisan:20","message":"Bootstrap\/app.php loaded successfully","data":{"app_class":"Illuminate\\Foundation\\Application"},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390153,"location":"artisan:4","message":"Artisan execution started","data":{"laravel_start":1767390153.641137},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390154,"location":"artisan:18","message":"Composer autoloader loaded successfully","data":[],"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390154,"location":"artisan:20","message":"Bootstrap\/app.php loaded successfully","data":{"app_class":"Illuminate\\Foundation\\Application"},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390187,"location":"artisan:4","message":"Artisan execution started","data":{"laravel_start":1767390187.455544},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390188,"location":"artisan:18","message":"Composer autoloader loaded successfully","data":[],"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}
+{"timestamp":1767390188,"location":"artisan:20","message":"Bootstrap\/app.php loaded successfully","data":{"app_class":"Illuminate\\Foundation\\Application"},"sessionId":"debug-session","runId":"hypothesis-test","hypothesisId":"E"}

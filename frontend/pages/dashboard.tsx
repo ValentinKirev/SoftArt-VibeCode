@@ -903,6 +903,7 @@ const Dashboard: NextPage = () => {
                 onViewTool={handleViewTool}
                 onToolDeleted={handleToolDeleted}
                 onToolDeletedSuccess={handleToolDeletedSuccess}
+                user={user}
                 onToolCreated={() => console.log('Tool created')}
                 refreshTrigger={refreshTrigger}
                 resetPagination={resetPagination}
@@ -1057,6 +1058,7 @@ const Dashboard: NextPage = () => {
                 onViewTool={handleViewTool}
                 onToolDeleted={handleToolDeleted}
                 onToolDeletedSuccess={handleToolDeletedSuccess}
+                user={user}
                 onToolCreated={() => console.log('Tool created')}
                 refreshTrigger={refreshTrigger}
                 resetPagination={resetPagination}
