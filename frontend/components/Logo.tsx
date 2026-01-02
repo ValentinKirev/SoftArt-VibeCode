@@ -14,21 +14,8 @@ const Logo: React.FC<LogoProps> = ({ size = 'medium', className = '' }) => {
 
   return (
     <div className={`relative ${sizeClasses[size]} ${className}`}>
-      {/* Try to load image logo first */}
-      <img
-        src={`/images/logo${size === 'small' ? '-small' : ''}.png`}
-        alt="SoftArt AI HUB Logo"
-        className="w-full h-full object-contain"
-        onError={(e) => {
-          // Hide image and show SVG fallback
-          e.currentTarget.style.display = 'none';
-          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-          if (fallback) fallback.style.display = 'block';
-        }}
-      />
-
-      {/* SVG Fallback Logo */}
-      <div className="w-full h-full hidden">
+      {/* SVG Logo */}
+      <div className="w-full h-full">
         <svg
           viewBox="0 0 48 48"
           fill="none"
@@ -77,6 +64,8 @@ const Logo: React.FC<LogoProps> = ({ size = 'medium', className = '' }) => {
 };
 
 export default Logo;
+
+
 
 
 

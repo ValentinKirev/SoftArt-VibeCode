@@ -1,6 +1,8 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import { useAuth } from '../hooks/useAuth';
 
 const Login: NextPage = () => {
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -8,6 +10,9 @@ const Login: NextPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string>('');
+  const router = useRouter();
+  const { user, loading, login } = useAuth();
 
   const updateTime = useCallback(() => {
     const now = new Date();
@@ -51,6 +56,14 @@ const Login: NextPage = () => {
       clearTimeout(timeout);
     };
   }, [updateTime]);
+
+  // Redirect authenticated users away from login page
+  useEffect(() => {
+    if (user && !loading) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
+
 
   // Enhanced Cursor Trail Effect
   useEffect(() => {
@@ -188,49 +201,19 @@ const Login: NextPage = () => {
     };
   }, []);
 
-  const [error, setError] = useState<string>('');
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
 
     try {
-        const response = await fetch('http://localhost:8000/api/login', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.message && data.message.includes('Login successful')) {
-        // Store user data and token in localStorage
-        const userData = {
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role
-        };
-
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', data.token);
-
-        // Redirect to dashboard
-        window.location.href = '/dashboard';
-      } else {
-        // Login failed, show error
-        setError(data.message || 'Login failed. Please check your credentials.');
-      }
-    } catch (error) {
+      await login(email, password);
+      
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (error: any) {
       console.error('Login error:', error);
-      setError('Network error. Please try again.');
+      setError(error.response?.data?.message || error.message || 'Login failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -440,7 +423,7 @@ const Login: NextPage = () => {
           .input-focus:focus {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(244, 114, 182, 0.4);
-            border-color: #f472b6 !important;
+            border-color: #fbbf24 !important;
           }
 
           .btn-hover {
@@ -509,12 +492,12 @@ const Login: NextPage = () => {
               </a>
               <div>
                 <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'white'}}>SoftArt AI HUB</h1>
-                <p style={{color: '#f472b6', fontSize: '0.875rem'}}>AI Tools Platform</p>
+                <p style={{color: '#fbbf24', fontSize: '0.875rem'}}>AI Tools Platform</p>
               </div>
             </div>
             <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
               <div style={{
-                color: '#f472b6',
+                color: '#fbbf24',
                 fontSize: '0.875rem',
                 background: 'rgba(0,0,0,0.3)',
                 padding: '0.25rem 0.75rem',
@@ -557,7 +540,7 @@ const Login: NextPage = () => {
             Welcome Back
           </h1>
           <p style={{
-            color: '#f472b6',
+            color: '#fbbf24',
             fontSize: '1.125rem'
           }}>
             Sign in to your SoftArt AI HUB account
@@ -646,17 +629,19 @@ const Login: NextPage = () => {
 
             {error && (
               <div style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
+                background: 'rgba(239, 68, 68, 0.9)',
+                border: '1px solid rgba(239, 68, 68, 0.5)',
                 borderRadius: '0.5rem',
                 padding: '1rem',
                 marginBottom: '1.5rem',
-                color: '#ef4444',
+                color: '#ffffff',
+                fontWeight: 'bold',
                 width: '100%',
                 boxSizing: 'border-box',
                 marginTop: '0',
                 marginLeft: 0,
-                marginRight: 0
+                marginRight: 0,
+                textAlign: 'center'
               }}>
                 {error}
               </div>
@@ -669,7 +654,7 @@ const Login: NextPage = () => {
               style={{
                 width: '100%',
                 padding: '14px 24px',
-                background: 'linear-gradient(135deg, #f472b6, #7c3aed)',
+                background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
                 border: '1px solid transparent',
                 borderRadius: '0.5rem',
                 color: 'white',
@@ -713,7 +698,7 @@ const Login: NextPage = () => {
                 transition: 'color 0.3s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#f472b6';
+                e.currentTarget.style.color = '#fbbf24';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.color = '#c4b5fd';
@@ -757,7 +742,7 @@ const Login: NextPage = () => {
           <h2 style={{
             fontSize: '1.5rem',
             fontWeight: 'bold',
-            color: '#f472b6',
+            color: '#fbbf24',
             margin: '0 0 1rem 0'
           }}>
             SoftArt AI HUB

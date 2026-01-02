@@ -13,11 +13,9 @@ class UserFavorite extends Model
     protected $fillable = [
         'user_id',
         'ai_tool_id',
-        'sort_order',
     ];
 
     protected $casts = [
-        'sort_order' => 'integer',
     ];
 
     /**
@@ -49,6 +47,6 @@ class UserFavorite extends Model
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order', 'asc');
+        return $query->orderBy('created_at', 'desc');
     }
 }

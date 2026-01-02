@@ -16,13 +16,11 @@ class Role extends Model
         'description',
         'permissions',
         'is_active',
-        'sort_order',
     ];
 
     protected $casts = [
         'permissions' => 'array',
         'is_active' => 'boolean',
-        'sort_order' => 'integer',
     ];
 
     /**
@@ -65,7 +63,7 @@ class Role extends Model
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order', 'asc')->orderBy('name', 'asc');
+        return $query->orderBy('name', 'asc');
     }
 
     /**
@@ -87,28 +85,24 @@ class Role extends Model
                 'slug' => 'owner',
                 'description' => 'System owner with full access',
                 'permissions' => ['*'], // All permissions
-                'sort_order' => 1,
             ],
             'frontend' => [
                 'name' => 'Frontend Developer',
                 'slug' => 'frontend',
                 'description' => 'Frontend development tools and UI components',
                 'permissions' => ['view_frontend_tools', 'edit_ui_components', 'manage_assets'],
-                'sort_order' => 2,
             ],
             'backend' => [
                 'name' => 'Backend Developer',
                 'slug' => 'backend',
                 'description' => 'Backend development tools and API management',
                 'permissions' => ['view_backend_tools', 'manage_apis', 'monitor_performance', 'database_access'],
-                'sort_order' => 3,
             ],
             'user' => [
                 'name' => 'User',
                 'slug' => 'user',
                 'description' => 'Basic user access',
                 'permissions' => ['view_basic_tools'],
-                'sort_order' => 4,
             ],
         ];
     }

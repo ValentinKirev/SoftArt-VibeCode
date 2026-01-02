@@ -1,10 +1,17 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import ToolManager from '../components/ToolManager';
+import { useAuth } from '../hooks/useAuth';
 
 const Home: NextPage = () => {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showToolManager, setShowToolManager] = useState(false);
+  const [editingTool, setEditingTool] = useState<any>(null);
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
 
   const updateTime = useCallback(() => {
     const now = new Date();
@@ -32,6 +39,49 @@ const Home: NextPage = () => {
     img.style.display = 'none';
     img.parentElement!.innerHTML = '<span style="color: white; font-weight: bold; font-size: 0.875rem;">AI</span>';
   }, []);
+
+  // ToolManager handlers
+  const handleAddNewTool = () => {
+    setEditingTool(null);
+    setShowToolManager(true);
+  };
+
+  const handleSaveTool = async (tool: any) => {
+    try {
+      console.log('Saving tool:', tool);
+      
+      const url = tool.id 
+        ? `http://localhost:8000/api/tools/${tool.id}`
+        : 'http://localhost:8000/api/tools';
+      
+      const method = tool.id ? 'PATCH' : 'POST';
+      
+      const requestBody = JSON.stringify(tool);
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'include',
+        body: requestBody,
+      });
+
+      if (response.ok) {
+        setShowToolManager(false);
+        setEditingTool(null);
+        console.log(`Tool ${tool.id ? 'updated' : 'created'} successfully`);
+      } else {
+        console.error('Save failed');
+      }
+    } catch (error) {
+      console.error('Error saving tool:', error);
+    }
+  };
+
+  // Breeze standard: logged-in users can access all pages
+// No redirect needed for index page
 
   useEffect(() => {
     // Set initial time
@@ -304,6 +354,29 @@ const Home: NextPage = () => {
             animation: buttonPulse 1s ease-in-out infinite;
           }
 
+          .tools-button-effect {
+            position: relative;
+          }
+
+          .tools-button-effect:hover {
+            animation: buttonPulse 1s ease-in-out infinite;
+          }
+
+          .tools-button-effect::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
+            transition: left 0.5s ease;
+          }
+
+          .tools-button-effect:hover::before {
+            left: 100%;
+          }
+
           .login-button-effect::before {
             content: '';
             position: absolute;
@@ -316,6 +389,29 @@ const Home: NextPage = () => {
           }
 
           .login-button-effect:hover::before {
+            left: 100%;
+          }
+
+          .logout-button-effect {
+            position: relative;
+          }
+
+          .logout-button-effect:hover {
+            animation: buttonPulse 1s ease-in-out infinite;
+          }
+
+          .logout-button-effect::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.2), transparent);
+            transition: left 0.5s ease;
+          }
+
+          .logout-button-effect:hover::before {
             left: 100%;
           }
 
@@ -416,12 +512,12 @@ const Home: NextPage = () => {
               </a>
               <div>
                 <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'white'}}>SoftArt AI HUB</h1>
-                <p style={{color: '#f472b6', fontSize: '0.875rem'}}>AI Tools Platform</p>
+                <p style={{color: '#fbbf24', fontSize: '0.875rem'}}>AI Tools Platform</p>
               </div>
             </div>
             <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
               <div style={{
-                color: '#f472b6',
+                color: '#fbbf24',
                 fontSize: '0.875rem',
                 background: 'rgba(0,0,0,0.3)',
                 padding: '0.25rem 0.75rem',
@@ -430,37 +526,139 @@ const Home: NextPage = () => {
                 {currentTime || 'Loading...'}
               </div>
               <nav style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
-                <a className="login-button-effect"
-                  href="/login"
-                  style={{
-                    color: '#c4b5fd',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
-                    padding: '0.5rem 1.5rem',
-                    borderRadius: '0.5rem',
-                    textDecoration: 'none',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#f472b6';
-                    e.currentTarget.style.backgroundColor = 'rgba(244, 114, 182, 0.1)';
-                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(244, 114, 182, 0.4), 0 0 30px rgba(244, 114, 182, 0.2)';
-                    e.currentTarget.style.color = '#f472b6';
-                    e.currentTarget.style.textShadow = '0 0 10px rgba(244, 114, 182, 0.5)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.color = '#c4b5fd';
-                    e.currentTarget.style.textShadow = 'none';
-                  }}
-                >
-                  <span style={{position: 'relative', zIndex: 1}}>Login</span>
-                </a>
+                {user ? (
+                  <>
+                    <div style={{
+                      color: '#fbbf24',
+                      fontSize: '0.875rem',
+                      background: 'rgba(0,0,0,0.3)',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '0.5rem'
+                    }}>
+                      User ID: {user?.id || 'Loading...'}
+                    </div>
+                    <button
+                      onClick={() => router.push('/tools')}
+                      className="tools-button-effect"
+                      style={{
+                        color: '#fbbf24',
+                        border: '1px solid rgba(4, 120, 87, 0.3)',
+                        padding: '0.5rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        background: 'linear-gradient(135deg, #047857, #0891b2)',
+                        cursor: 'pointer',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        fontSize: '0.875rem',
+                        fontWeight: 'bold'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#fbbf24';
+                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                        e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.textShadow = 'none';
+                      }}
+                    >
+                      🧰 AI Tools
+                    </button>
+                    <button
+                      onClick={() => router.push('/dashboard')}
+                      className="dashboard-button-effect"
+                      style={{
+                        color: '#fbbf24',
+                        border: '1px solid rgba(4, 120, 87, 0.3)',
+                        padding: '0.5rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        background: 'linear-gradient(135deg, #047857, #0891b2)',
+                        cursor: 'pointer',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        fontSize: '0.875rem',
+                        fontWeight: 'bold'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#fbbf24';
+                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                        e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.textShadow = 'none';
+                      }}
+                    >
+                      📊 Dashboard
+                    </button>
+                    <button
+                      onClick={logout}
+                      className="logout-button-effect"
+                      style={{
+                        color: 'white',
+                        border: '1px solid rgba(244, 114, 182, 0.3)',
+                        padding: '0.5rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
+                        cursor: 'pointer',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#ffffff';
+                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)';
+                        e.currentTarget.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(244, 114, 182, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.textShadow = 'none';
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <a className="login-button-effect"
+                    href="/login"
+                    style={{
+                      color: 'white',
+                      border: '1px solid rgba(244, 114, 182, 0.3)',
+                      padding: '0.5rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      textDecoration: 'none',
+                      background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
+                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#ffffff';
+                      e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)';
+                      e.currentTarget.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(244, 114, 182, 0.3)';
+                      e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.textShadow = 'none';
+                    }}
+                  >
+                    <span style={{position: 'relative', zIndex: 1}}>Login</span>
+                  </a>
+                )}
               </nav>
             </div>
           </div>
@@ -520,7 +718,7 @@ const Home: NextPage = () => {
             Discover & Share
             <span style={{
               display: 'block',
-              background: 'linear-gradient(45deg, #a78bfa, #f472b6, #3730a3)',
+              background: 'linear-gradient(45deg, #a78bfa, #fbbf24, #3730a3)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -575,7 +773,7 @@ const Home: NextPage = () => {
           <h2 style={{
             fontSize: '1.5rem',
             fontWeight: 'bold',
-            color: '#f472b6',
+            color: '#fbbf24',
             margin: '0 0 1rem 0'
           }}>
             SoftArt AI HUB
@@ -596,6 +794,19 @@ const Home: NextPage = () => {
           </p>
         </div>
       </footer>
+
+      {/* ToolManager Modal */}
+      {showToolManager && (
+        <ToolManager
+          onClose={() => {
+            setShowToolManager(false);
+            setEditingTool(null);
+          }}
+          onSave={handleSaveTool}
+          initialTool={editingTool}
+          readOnly={false}
+        />
+      )}
     </div>
   );
 };

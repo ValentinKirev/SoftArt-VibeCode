@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\AiTool;
 use App\Models\Category;
 use App\Models\Role;
+use App\Models\Tag;
 
 class AiToolSeeder extends Seeder
 {
@@ -21,17 +22,16 @@ class AiToolSeeder extends Seeder
                 'description' => 'Advanced conversational AI for text generation and assistance',
                 'long_description' => 'ChatGPT is a powerful language model capable of understanding and generating human-like text. Perfect for writing, analysis, coding help, and creative tasks.',
                 'url' => 'https://chat.openai.com',
-                'api_endpoint' => 'https://api.openai.com/v1/chat/completions',
+                'documentation_url' => 'https://platform.openai.com/docs/api-reference/chat',
                 'icon' => '💬',
                 'color' => '#10A37F',
                 'version' => '4.0',
                 'status' => 'active',
-                'is_featured' => true,
                 'requires_auth' => true,
                 'api_key_required' => true,
                 'categories' => ['text-generation'],
-                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer', 'qa', 'user'],
-                'sort_order' => 1,
+                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer', 'qa'],
+                'tags' => ['natural-language', 'machine-learning', 'productivity'],
             ],
             [
                 'name' => 'DALL-E 3',
@@ -39,17 +39,16 @@ class AiToolSeeder extends Seeder
                 'description' => 'AI image generation from text descriptions',
                 'long_description' => 'DALL-E 3 creates stunning, detailed images from text prompts. Perfect for creative projects, design work, and visual content creation.',
                 'url' => 'https://openai.com/dall-e-3',
-                'api_endpoint' => 'https://api.openai.com/v1/images/generations',
+                'documentation_url' => 'https://platform.openai.com/docs/api-reference/images',
                 'icon' => '🎨',
                 'color' => '#FF6B6B',
                 'version' => '3.0',
                 'status' => 'active',
-                'is_featured' => true,
                 'requires_auth' => true,
                 'api_key_required' => true,
                 'categories' => ['image-generation'],
                 'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer'],
-                'sort_order' => 2,
+                'tags' => ['computer-vision', 'creative', 'machine-learning'],
             ],
             [
                 'name' => 'GitHub Copilot',
@@ -57,16 +56,16 @@ class AiToolSeeder extends Seeder
                 'description' => 'AI-powered code completion and assistance',
                 'long_description' => 'GitHub Copilot helps developers write code faster with AI-powered suggestions. Works directly in your IDE to provide context-aware code completions.',
                 'url' => 'https://github.com/features/copilot',
+                'documentation_url' => 'https://docs.github.com/en/copilot',
                 'icon' => '🤖',
                 'color' => '#24292E',
                 'version' => '1.0',
                 'status' => 'active',
-                'is_featured' => true,
                 'requires_auth' => true,
                 'api_key_required' => false,
                 'categories' => ['code-generation'],
                 'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer'],
-                'sort_order' => 3,
+                'tags' => ['code-generation', 'productivity', 'automation'],
             ],
             [
                 'name' => 'Claude',
@@ -74,17 +73,16 @@ class AiToolSeeder extends Seeder
                 'description' => 'Constitutional AI assistant for complex reasoning',
                 'long_description' => 'Claude is an AI assistant designed for helpful, harmless, and honest interactions. Excellent for complex reasoning, analysis, and detailed explanations.',
                 'url' => 'https://claude.ai',
-                'api_endpoint' => 'https://api.anthropic.com/v1/messages',
+                'documentation_url' => 'https://docs.anthropic.com/claude/reference',
                 'icon' => '🧠',
                 'color' => '#D97706',
                 'version' => '3.5',
                 'status' => 'active',
-                'is_featured' => true,
                 'requires_auth' => true,
                 'api_key_required' => true,
                 'categories' => ['text-generation'],
-                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer', 'qa', 'user'],
-                'sort_order' => 4,
+                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer', 'qa'],
+                'tags' => ['natural-language', 'machine-learning', 'research'],
             ],
             [
                 'name' => 'Midjourney',
@@ -92,16 +90,16 @@ class AiToolSeeder extends Seeder
                 'description' => 'AI art generation with artistic style',
                 'long_description' => 'Midjourney creates beautiful, artistic images from text descriptions. Known for its unique artistic style and high-quality outputs.',
                 'url' => 'https://www.midjourney.com',
+                'documentation_url' => 'https://docs.midjourney.com/docs/api-reference',
                 'icon' => '🖼️',
                 'color' => '#8B5CF6',
                 'version' => '6.0',
                 'status' => 'active',
-                'is_featured' => true,
                 'requires_auth' => true,
                 'api_key_required' => false,
                 'categories' => ['image-generation'],
                 'roles' => ['owner', 'pm', 'frontend', 'designer'],
-                'sort_order' => 5,
+                'tags' => ['computer-vision', 'creative'],
             ],
             [
                 'name' => 'Windsurf Editor',
@@ -109,16 +107,16 @@ class AiToolSeeder extends Seeder
                 'description' => 'AI-powered code editor with intelligent assistance',
                 'long_description' => 'Windsurf Editor is an advanced code editor with built-in AI assistance for code generation, debugging, and optimization.',
                 'url' => 'https://windsurf-editor.example.com',
+                'documentation_url' => 'https://docs.windsurf-editor.example.com',
                 'icon' => '🌊',
                 'color' => '#0EA5E9',
                 'version' => '1.0',
                 'status' => 'beta',
-                'is_featured' => false,
                 'requires_auth' => true,
                 'api_key_required' => false,
                 'categories' => ['code-generation'],
                 'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer'],
-                'sort_order' => 6,
+                'tags' => ['code-generation', 'productivity'],
             ],
             [
                 'name' => 'Stable Diffusion',
@@ -126,17 +124,16 @@ class AiToolSeeder extends Seeder
                 'description' => 'Open-source image generation model',
                 'long_description' => 'Stable Diffusion is a powerful open-source image generation model that can be run locally or via API for creating diverse images.',
                 'url' => 'https://stability.ai',
-                'api_endpoint' => 'https://api.stability.ai/v1/generation',
+                'documentation_url' => 'https://platform.stability.ai/docs/api-reference',
                 'icon' => '🎭',
                 'color' => '#F97316',
                 'version' => '2.1',
                 'status' => 'active',
-                'is_featured' => false,
                 'requires_auth' => true,
                 'api_key_required' => true,
                 'categories' => ['image-generation'],
                 'roles' => ['owner', 'pm', 'backend'],
-                'sort_order' => 7,
+                'tags' => ['computer-vision', 'research'],
             ],
             [
                 'name' => 'Whisper',
@@ -144,17 +141,16 @@ class AiToolSeeder extends Seeder
                 'description' => 'AI-powered speech-to-text transcription',
                 'long_description' => 'Whisper is an advanced speech recognition system that can transcribe audio with high accuracy across multiple languages.',
                 'url' => 'https://openai.com/research/whisper',
-                'api_endpoint' => 'https://api.openai.com/v1/audio/transcriptions',
+                'documentation_url' => 'https://platform.openai.com/docs/api-reference/audio',
                 'icon' => '🎤',
                 'color' => '#10B981',
                 'version' => '3.0',
                 'status' => 'active',
-                'is_featured' => false,
                 'requires_auth' => true,
                 'api_key_required' => true,
                 'categories' => ['audio-processing'],
                 'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer'],
-                'sort_order' => 8,
+                'tags' => ['audio-processing', 'machine-learning'],
             ],
         ];
 
@@ -166,15 +162,13 @@ class AiToolSeeder extends Seeder
                     'description' => $toolData['description'],
                     'long_description' => $toolData['long_description'],
                     'url' => $toolData['url'],
-                    'api_endpoint' => $toolData['api_endpoint'] ?? null,
+                    'documentation_url' => $toolData['documentation_url'] ?? null,
                     'icon' => $toolData['icon'],
                     'color' => $toolData['color'],
                     'version' => $toolData['version'],
                     'status' => $toolData['status'],
-                    'is_featured' => $toolData['is_featured'],
                     'requires_auth' => $toolData['requires_auth'],
                     'api_key_required' => $toolData['api_key_required'],
-                    'sort_order' => $toolData['sort_order'],
                 ]
             );
 
@@ -188,6 +182,12 @@ class AiToolSeeder extends Seeder
             if (isset($toolData['roles'])) {
                 $roleIds = Role::whereIn('slug', $toolData['roles'])->pluck('id');
                 $tool->roles()->sync($roleIds);
+            }
+
+            // Attach tags
+            if (isset($toolData['tags'])) {
+                $tagIds = Tag::whereIn('slug', $toolData['tags'])->pluck('id');
+                $tool->tags()->sync($tagIds);
             }
         }
 

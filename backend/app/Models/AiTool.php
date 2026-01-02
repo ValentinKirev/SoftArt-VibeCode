@@ -17,27 +17,23 @@ class AiTool extends Model
         'description',
         'long_description',
         'url',
-        'api_endpoint',
+        'documentation_url',
         'icon',
         'color',
         'version',
         'status',
-        'is_featured',
         'is_active',
         'requires_auth',
         'api_key_required',
         'usage_limit',
-        'sort_order',
         'metadata',
     ];
 
     protected $casts = [
-        'is_featured' => 'boolean',
         'is_active' => 'boolean',
         'requires_auth' => 'boolean',
         'api_key_required' => 'boolean',
         'usage_limit' => 'integer',
-        'sort_order' => 'integer',
         'metadata' => 'array',
     ];
 
@@ -47,8 +43,7 @@ class AiTool extends Model
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class, 'ai_tool_category')
-                    ->withTimestamps()
-                    ->withPivot('sort_order');
+                    ->withTimestamps();
     }
 
     /**
@@ -59,6 +54,15 @@ class AiTool extends Model
         return $this->belongsToMany(Role::class, 'ai_tool_role')
                     ->withTimestamps()
                     ->withPivot(['access_level', 'custom_permissions']);
+    }
+
+    /**
+     * Get the tags that belong to this AI tool.
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'ai_tool_tag')
+                    ->withTimestamps();
     }
 
     /**
@@ -83,22 +87,6 @@ class AiTool extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
-    }
-
-    /**
-     * Scope to get only featured tools.
-     */
-    public function scopeFeatured($query)
-    {
-        return $query->where('is_featured', true);
-    }
-
-    /**
-     * Scope to order by sort order.
-     */
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('sort_order', 'asc')->orderBy('name', 'asc');
     }
 
     /**

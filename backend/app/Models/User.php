@@ -90,9 +90,8 @@ class User extends Authenticatable
     public function favorites(): BelongsToMany
     {
         return $this->belongsToMany(AiTool::class, 'user_favorites')
-                    ->withPivot('sort_order')
                     ->withTimestamps()
-                    ->orderBy('sort_order');
+                    ->orderBy('created_at', 'desc');
     }
 
     /**

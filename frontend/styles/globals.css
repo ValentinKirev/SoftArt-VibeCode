@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom scrollbar styling - same as modal windows */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #fbbf24, #7c3aed);
+  border-radius: 4px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #7c3aed, #fbbf24);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+}
+::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
 /* Custom animations for the updated page */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }

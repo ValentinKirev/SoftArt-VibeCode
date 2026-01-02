@@ -2,20 +2,127 @@ import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-}
+import ToolManager from '../components/ToolManager';
+import ToolList from '../components/ToolList';
+import ToolViewModal from '../components/ToolViewModal';
+import Toast from '../components/Toast';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import BreezeAuth from '../components/BreezeAuth';
+import { useAuth } from '../hooks/useAuth';
+import { checkAddToolParam, clearAddToolParam } from '../utils/addTool';
 
 const Dashboard: NextPage = () => {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [viewingTool, setViewingTool] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<any>(null);
+  const [toast, setToast] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showToolManager, setShowToolManager] = useState(false);
+  const [editingTool, setEditingTool] = useState<any>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [resetPagination, setResetPagination] = useState(false);
+  const [allTools, setAllTools] = useState<any[]>([]);
+  const [loadingTools, setLoadingTools] = useState(true);
   const router = useRouter();
+  const { user, loading, logout, getRoleName } = useAuth();
+
+  // Auto-dismiss toast after 3 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Authentication is handled by BreezeAuth wrapper
+
+  // Simple role detection
+  const getUserRoleName = (user: any): string => {
+    // Direct string mapping (current format from backend)
+    if (typeof user?.role === 'string') {
+      const mapping: {[key: string]: string} = {
+        'frontend': 'Frontend Developer',
+        'backend': 'Backend Developer', 
+        'pm': 'Project Manager',
+        'designer': 'Designer',
+        'qa': 'QA Engineer',
+        'owner': 'Owner'
+      };
+      return mapping[user.role] || user.role;
+    }
+    
+    // Object format (future format)
+    if (typeof user?.role === 'object' && user.role?.name) {
+      return user.role.name;
+    }
+    
+    return 'user';
+  };
+
+  // Fetch and filter tools based on user role
+  const fetchAndFilterTools = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+    
+    try {
+      setLoadingTools(true);
+      
+      // Use our simple function
+      const userRoleName = getUserRoleName(user);
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tools`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch tools');
+      }
+      
+      const data = await response.json();
+      const tools = data.data || data;
+      
+      // Filter tools based on user role
+      let filteredTools = tools;
+      
+      if (user.role && userRoleName !== 'user') {
+        const userRoleNameLower = userRoleName.toLowerCase().trim();
+        
+        // Owner and Project Manager see all tools
+        if (userRoleNameLower !== 'owner' && userRoleNameLower !== 'project manager') {
+          // Other users see only tools that match their role
+          filteredTools = tools.filter((tool: any) => {
+            if (!tool.roles || !Array.isArray(tool.roles)) {
+              return false;
+            }
+            
+            const matches = tool.roles.some((toolRole: any) => {
+              const toolRoleName = toolRole.name?.toLowerCase().trim();
+              return toolRoleName === userRoleNameLower;
+            });
+            
+            return matches;
+          });
+        }
+      }
+      
+      setAllTools(filteredTools);
+    } catch (error) {
+      setError('Failed to load tools');
+    } finally {
+      setLoadingTools(false);
+    }
+  }, [user]);
+
+  // Fetch tools when user changes or refreshTrigger changes
+  useEffect(() => {
+    if (user) {
+      fetchAndFilterTools();
+    }
+  }, [user, refreshTrigger, fetchAndFilterTools]);
 
   const updateTime = useCallback(() => {
     const now = new Date();
@@ -31,49 +138,7 @@ const Dashboard: NextPage = () => {
     setCurrentTime(timeString);
   }, []);
 
-  // Check authentication on component mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/login');
-          return;
-        }
 
-        const response = await fetch('http://localhost:8000/api/user', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        } else {
-          // Token invalid, redirect to login
-          localStorage.removeItem('user');
-          localStorage.removeItem('token');
-          router.push('/login');
-          return;
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        router.push('/login');
-        return;
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  // Memoize error handlers to prevent re-renders
   const handleLogoError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget as HTMLImageElement;
     img.style.display = 'none';
@@ -82,27 +147,112 @@ const Dashboard: NextPage = () => {
 
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await fetch('http://localhost:8000/api/logout', {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-      }
-
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      router.push('/');
+      await logout();
+      router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
-      // Still clear local storage even if API call fails
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      router.push('/');
+      router.push('/login');
     }
+  };
+
+  const handleSaveTool = async (tool: any) => {
+    try {
+      const url = tool.id 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/tools/${tool.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/tools`;
+      
+      const method = tool.id ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'omit',
+        body: JSON.stringify(tool),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to ${tool.id ? 'update' : 'create'} tool: ${response.status} ${response.statusText}`);
+      }
+
+      const responseData = await response.json();
+
+      // Close the tool manager
+      setShowToolManager(false);
+      setEditingTool(null);
+      
+      // Reset pagination to page 1 for new tools
+      if (!tool.id) {
+        setResetPagination(true);
+        setTimeout(() => setResetPagination(false), 100);
+      }
+      
+      // Trigger refresh of tool list
+      setRefreshTrigger(prev => prev + 1);
+      
+      // Show success message based on whether it's a new tool or update
+      const action = tool.id ? 'updated' : 'created';
+      const message = `Tool "${tool.name}" ${action} successfully`;
+      
+      // Show toast notification
+      setToast({
+        message: message,
+        type: 'success'
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Show error toast
+      setToast({
+        message: `Failed to ${tool.id ? 'update' : 'create'} tool: ${errorMessage}`,
+        type: 'error'
+      });
+    }
+  };
+
+  const handleEditTool = (tool: any) => {
+    setEditingTool(tool);
+    setViewingTool(false);
+    setShowToolManager(true);
+  };
+
+  const handleViewTool = (tool: any) => {
+    setSelectedTool(tool);
+    setShowViewModal(true);
+  };
+
+  const handleAddNewTool = () => {
+    setEditingTool(null);
+    setViewingTool(false);
+    setShowToolManager(true);
+  };
+
+  const handleManageTools = () => {
+    setEditingTool(null);
+    setShowToolManager(true);
+  };
+
+  const handleToolDeleted = () => {
+    // Reset pagination to page 1 after deletion
+    setResetPagination(true);
+    setTimeout(() => setResetPagination(false), 100);
+    
+    // Trigger refresh of tool list
+    setRefreshTrigger(prev => prev + 1);
+    // Optionally show a notification or update UI state
+    console.log('Tool deleted, refreshing dashboard');
+  };
+
+  const handleToolDeletedSuccess = (message: string) => {
+    // Show success toast for tool deletion
+    setToast({
+      message: message,
+      type: 'success'
+    });
   };
 
   useEffect(() => {
@@ -115,11 +265,22 @@ const Dashboard: NextPage = () => {
     // Trigger page load animation
     const timeout = setTimeout(() => setIsLoaded(true), 200);
 
+    // Check for addTool URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('addTool') === 'true') {
+      // Clear the URL parameter
+      window.history.replaceState({}, '', window.location.pathname);
+      // Trigger add tool functionality
+      setTimeout(() => {
+        handleAddNewTool();
+      }, 500);
+    }
+
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [updateTime]);
+  }, [updateTime, handleAddNewTool]);
 
   // Enhanced Cursor Trail Effect
   useEffect(() => {
@@ -257,29 +418,11 @@ const Dashboard: NextPage = () => {
     };
   }, []);
 
-  if (loading) {
-    return (
+  return (
+    <BreezeAuth requireAuth={true}>
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(to bottom right, #111827, #7c3aed, #3730a3)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'white'
-      }}>
-        <div>Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null; // Will redirect to login
-  }
-
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(to bottom right, #111827, #7c3aed, #3730a3)',
       position: 'relative',
       overflow: 'hidden'
     }}>
@@ -394,6 +537,52 @@ const Dashboard: NextPage = () => {
             animation: buttonPulse 1s ease-in-out infinite;
           }
 
+          .tools-button-effect {
+            position: relative;
+          }
+
+          .tools-button-effect:hover {
+            animation: buttonPulse 1s ease-in-out infinite;
+          }
+
+          .tools-button-effect::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(4, 120, 87, 0.2), transparent);
+            transition: left 0.5s ease;
+          }
+
+          .tools-button-effect:hover::before {
+            left: 100%;
+          }
+
+          .dashboard-button-effect {
+            position: relative;
+          }
+
+          .dashboard-button-effect:hover {
+            animation: buttonPulse 1s ease-in-out infinite;
+          }
+
+          .dashboard-button-effect::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(4, 120, 87, 0.2), transparent);
+            transition: left 0.5s ease;
+          }
+
+          .dashboard-button-effect:hover::before {
+            left: 100%;
+          }
+
           .trail-segment {
             position: fixed;
             pointer-events: none;
@@ -429,6 +618,17 @@ const Dashboard: NextPage = () => {
             }
             100% {
               opacity: 0;
+            }
+          }
+
+          @keyframes slideIn {
+            0% {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
             }
           }
         `}</style>
@@ -489,21 +689,12 @@ const Dashboard: NextPage = () => {
               </a>
               <div>
                 <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'white'}}>SoftArt AI HUB</h1>
-                <p style={{color: '#f472b6', fontSize: '0.875rem'}}>AI Tools Platform</p>
+                <p style={{color: '#fbbf24', fontSize: '0.875rem'}}>AI Tools Platform</p>
               </div>
             </div>
             <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
               <div style={{
-                color: '#f472b6',
-                fontSize: '0.875rem',
-                background: 'rgba(0,0,0,0.3)',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '0.5rem'
-              }}>
-                User ID: {user?.id || 'Loading...'}
-              </div>
-              <div style={{
-                color: '#f472b6',
+                color: '#fbbf24',
                 fontSize: '0.875rem',
                 background: 'rgba(0,0,0,0.3)',
                 padding: '0.25rem 0.75rem',
@@ -511,39 +702,108 @@ const Dashboard: NextPage = () => {
               }}>
                 {currentTime || 'Loading...'}
               </div>
-              <button
-                onClick={handleLogout}
-                className="logout-button-effect"
-                style={{
-                  color: '#c4b5fd',
-                  border: '1px solid rgba(139, 92, 246, 0.3)',
-                  padding: '0.5rem 1.5rem',
-                  borderRadius: '0.5rem',
-                  backgroundColor: 'transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#f472b6';
-                  e.currentTarget.style.backgroundColor = 'rgba(244, 114, 182, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(244, 114, 182, 0.4), 0 0 30px rgba(244, 114, 182, 0.2)';
-                  e.currentTarget.style.color = '#f472b6';
-                  e.currentTarget.style.textShadow = '0 0 10px rgba(244, 114, 182, 0.5)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.color = '#c4b5fd';
-                  e.currentTarget.style.textShadow = 'none';
-                }}
-              >
-                Logout
-              </button>
+              <div style={{
+                color: '#fbbf24',
+                fontSize: '0.875rem',
+                background: 'rgba(0,0,0,0.3)',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '0.5rem'
+              }}>
+                User ID: {user?.id || 'Loading...'}
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => window.location.href = '/tools'}
+                  className="tools-button-effect"
+                  style={{
+                    color: '#fbbf24',
+                    border: '1px solid rgba(4, 120, 87, 0.3)',
+                    padding: '0.5rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    background: 'linear-gradient(135deg, #047857, #0891b2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#fbbf24';
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                    e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.textShadow = 'none';
+                  }}
+                >
+                  🧰 AI Tools
+                </button>
+                <button
+                  onClick={handleAddNewTool}
+                  className="add-tool-button-effect"
+                  style={{
+                    color: '#fbbf24',
+                    border: '1px solid rgba(4, 120, 87, 0.3)',
+                    padding: '0.5rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    background: 'linear-gradient(135deg, #047857, #0891b2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#fbbf24';
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                    e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.textShadow = 'none';
+                  }}
+                >
+                  🛠️ Add Tool
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="logout-button-effect"
+                  style={{
+                    color: 'white',
+                    border: '1px solid rgba(244, 114, 182, 0.3)',
+                    padding: '0.5rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
+                    cursor: 'pointer',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#ffffff';
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(244, 114, 182, 0.3)';
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.textShadow = 'none';
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -580,38 +840,37 @@ const Dashboard: NextPage = () => {
               color: 'white',
               marginBottom: '1rem'
             }}>
-              Welcome, {user.name}!
+              Welcome, {user?.name || 'Guest'}!
             </h1>
             <p style={{
-              color: '#f472b6',
+              color: '#fbbf24',
               fontSize: '1.5rem',
               marginBottom: '2rem'
             }}>
-              You have the role: <span style={{fontWeight: 'bold', textTransform: 'capitalize'}}>{user.role}</span>
+              Your role is {getUserRoleName(user)}!
             </p>
             <div style={{
               width: '6rem',
               height: '6rem',
-              background: 'linear-gradient(to bottom right, #7c3aed, #3730a3)',
+              background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
               borderRadius: '50%',
-              margin: '0 auto 2rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              animation: 'pulse 3s ease-in-out infinite'
+              margin: '0 auto 2rem auto',
+              boxShadow: '0 10px 30px rgba(251, 191, 36, 0.3)'
             }}>
               <span style={{
                 color: 'white',
                 fontSize: '2rem',
                 fontWeight: 'bold'
               }}>
-                {user.name.charAt(0).toUpperCase()}
+                                {user?.name?.charAt(0)?.toUpperCase() || 'G'}
               </span>
             </div>
           </div>
 
-          {/* Role-based content */}
+          {/* AI Tools Display */}
           <div style={{
             background: 'rgba(0, 0, 0, 0.2)',
             backdropFilter: 'blur(20px)',
@@ -625,406 +884,31 @@ const Dashboard: NextPage = () => {
               fontSize: '2rem',
               marginBottom: '2rem'
             }}>
-              Your Dashboard
+              AI Tools for you
             </h2>
 
-            {/* Role-based features */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '1.5rem'
-            }}>
-
-              {/* Owner-specific features */}
-              {user.role === 'owner' && (
-                <>
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.1), rgba(124, 58, 237, 0.1))',
-                    border: '1px solid rgba(244, 114, 182, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>👑 Admin Panel</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      Full system access and user management
-                    </p>
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-                      <button style={{
-                        background: 'rgba(244, 114, 182, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Manage Users
-                      </button>
-                      <button style={{
-                        background: 'rgba(124, 58, 237, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        System Settings
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(124, 58, 237, 0.1))',
-                    border: '1px solid rgba(124, 58, 237, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>📊 Analytics</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      View system statistics and reports
-                    </p>
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-                      <button style={{
-                        background: 'rgba(244, 114, 182, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        View Reports
-                      </button>
-                      <button style={{
-                        background: 'rgba(124, 58, 237, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Export Data
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(124, 58, 237, 0.1))',
-                    border: '1px solid rgba(124, 58, 237, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>⚙️ System Settings</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      Configure system parameters
-                    </p>
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-                      <button style={{
-                        background: 'rgba(244, 114, 182, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Backup System
-                      </button>
-                      <button style={{
-                        background: 'rgba(124, 58, 237, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Security Logs
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Frontend-specific features */}
-              {user.role === 'frontend' && (
-                <>
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.1), rgba(124, 58, 237, 0.1))',
-                    border: '1px solid rgba(244, 114, 182, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>🎨 Design Tools</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      Access design and UI components
-                    </p>
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-                      <button style={{
-                        background: 'rgba(244, 114, 182, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Component Library
-                      </button>
-                      <button style={{
-                        background: 'rgba(124, 58, 237, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Style Editor
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.1), rgba(124, 58, 237, 0.1))',
-                    border: '1px solid rgba(244, 114, 182, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>🖼️ Asset Manager</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      Manage media and design assets
-                    </p>
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-                      <button style={{
-                        background: 'rgba(244, 114, 182, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Upload Assets
-                      </button>
-                      <button style={{
-                        background: 'rgba(124, 58, 237, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Media Gallery
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Backend-specific features */}
-              {user.role === 'backend' && (
-                <>
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(55, 48, 163, 0.1), rgba(55, 48, 163, 0.1))',
-                    border: '1px solid rgba(55, 48, 163, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>🔧 API Management</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      Manage API endpoints and services
-                    </p>
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-                      <button style={{
-                        background: 'rgba(55, 48, 163, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        API Keys
-                      </button>
-                      <button style={{
-                        background: 'rgba(55, 48, 163, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Webhooks
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(55, 48, 163, 0.1), rgba(55, 48, 163, 0.1))',
-                    border: '1px solid rgba(55, 48, 163, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>📈 Performance Monitor</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      Monitor system performance
-                    </p>
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-                      <button style={{
-                        background: 'rgba(55, 48, 163, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Server Metrics
-                      </button>
-                      <button style={{
-                        background: 'rgba(55, 48, 163, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Log Viewer
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(55, 48, 163, 0.1), rgba(55, 48, 163, 0.1))',
-                    border: '1px solid rgba(55, 48, 163, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>🗃️ Database Tools</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      Database administration tools
-                    </p>
-                    <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-                      <button style={{
-                        background: 'rgba(55, 48, 163, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Query Builder
-                      </button>
-                      <button style={{
-                        background: 'rgba(55, 48, 163, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        Migrations
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Default user features */}
-              {(!user.role || user.role === 'user') && (
-                <>
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.1), rgba(124, 58, 237, 0.1))',
-                    border: '1px solid rgba(244, 114, 182, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>🔍 Basic Features</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      View available features
-                    </p>
-                  </div>
-
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(124, 58, 237, 0.1))',
-                    border: '1px solid rgba(124, 58, 237, 0.3)',
-                    borderRadius: '0.75rem',
-                    padding: '1.5rem',
-                    textAlign: 'center'
-                  }}>
-                    <h3 style={{color: 'white', marginBottom: '1rem'}}>👤 Profile Settings</h3>
-                    <p style={{color: '#c4b5fd', fontSize: '0.875rem'}}>
-                      Manage your profile
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
+            {loadingTools ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '2rem', 
+                color: '#9ca3af' 
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                Loading tools...
+              </div>
+            ) : (
+              <ToolList 
+                tools={allTools}
+                onEditTool={handleEditTool} 
+                onViewTool={handleViewTool}
+                onToolDeleted={handleToolDeleted}
+                onToolDeletedSuccess={handleToolDeletedSuccess}
+                onToolCreated={() => console.log('Tool created')}
+                refreshTrigger={refreshTrigger}
+                resetPagination={resetPagination}
+                enablePagination={true}
+              />
+            )}
           </div>
         </div>
       </main>
@@ -1060,7 +944,7 @@ const Dashboard: NextPage = () => {
           <h2 style={{
             fontSize: '1.5rem',
             fontWeight: 'bold',
-            color: '#f472b6',
+            color: '#fbbf24',
             margin: '0 0 1rem 0'
           }}>
             SoftArt AI HUB
@@ -1081,7 +965,125 @@ const Dashboard: NextPage = () => {
           </p>
         </div>
       </footer>
+
+      {/* Tool Management Modal */}
+      {showToolManager && (
+        <ToolManager
+          onClose={() => {
+            setShowToolManager(false);
+            setViewingTool(false);
+          }}
+          onSave={handleSaveTool}
+          initialTool={editingTool}
+          readOnly={viewingTool}
+        />
+      )}
+
+      {/* Tool List Modal */}
+      {showToolManager && !editingTool && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999,
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1f2937, #111827)',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
+            borderRadius: '1rem',
+            padding: '2rem',
+            width: '90%',
+            maxWidth: '1200px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <h2 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}>
+                Manage AI Tools
+              </h2>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => setEditingTool({})}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  + Add New Tool
+                </button>
+                <button
+                  onClick={() => setShowToolManager(false)}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.2)',
+                    color: '#ef4444',
+                    border: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {loadingTools ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '2rem', 
+                color: '#9ca3af' 
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                Loading tools...
+              </div>
+            ) : (
+              <ToolList 
+                tools={allTools}
+                onEditTool={handleEditTool} 
+                onViewTool={handleViewTool}
+                onToolDeleted={handleToolDeleted}
+                onToolDeletedSuccess={handleToolDeletedSuccess}
+                onToolCreated={() => console.log('Tool created')}
+                refreshTrigger={refreshTrigger}
+                resetPagination={resetPagination}
+                enablePagination={true}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tool View Modal */}
+      <ToolViewModal
+        tool={selectedTool}
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+      />
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
+    </BreezeAuth>
   );
 };
 

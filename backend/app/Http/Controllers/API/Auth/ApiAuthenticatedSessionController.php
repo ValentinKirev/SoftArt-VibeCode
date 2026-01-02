@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 
 class ApiAuthenticatedSessionController extends Controller
@@ -16,21 +17,52 @@ class ApiAuthenticatedSessionController extends Controller
     public function store(Request $request)
     {
         try {
+            Log::info('API LOGIN CONTROLLER CALLED!', ['email' => $request->email]);
+            
             $request->validate([
                 'email' => 'required|email',
                 'password' => 'required',
             ]);
 
             $user = User::where('email', $request->email)->first();
+            Log::info('User found', ['user_id' => $user ? $user->id : null]);
 
             if (!$user || !Hash::check($request->password, $user->password)) {
+                Log::warning('Authentication failed', ['email' => $request->email]);
                 return response()->json([
                     'message' => 'Invalid credentials'
                 ], 401);
             }
 
+            Log::info('Authentication successful', ['user_id' => $user->id]);
+
             // Create a simple token for the session
             $token = 'laravel-token-' . $user->id . '-' . time();
+
+            // Get role name directly using role_id
+            $roleName = 'Unknown';
+            $roleSlug = null;
+            $roleId = null;
+            if ($user->role_id) {
+                $role = \App\Models\Role::find($user->role_id);
+                if ($role) {
+                    $roleName = $role->name; // Use the role name, not slug
+                    $roleSlug = $role->slug;
+                    $roleId = $role->id;
+                }
+            }
+            
+            Log::info('Role name determined', ['role_name' => $roleName]);
+            Log::info('Login response structure', [
+                'role_id' => $user->role_id,
+                'role_name' => $roleName,
+                'role_slug' => $roleSlug,
+                'role_object' => [
+                    'id' => $roleId,
+                    'name' => $roleName,
+                    'slug' => $roleSlug,
+                ]
+            ]);
 
             return response()->json([
                 'message' => 'Login successful',
@@ -38,12 +70,18 @@ class ApiAuthenticatedSessionController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => $user->role ?? 'user'
+                    'role_id' => $user->role_id,
+                    'role' => [
+                        'id' => $roleId,
+                        'name' => $roleName,
+                        'slug' => $roleSlug,
+                    ],
                 ],
                 'token' => $token
             ], 200);
 
         } catch (\Exception $e) {
+            Log::error('Login error', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Login failed',
                 'error' => $e->getMessage()
@@ -56,13 +94,31 @@ class ApiAuthenticatedSessionController extends Controller
      */
     public function user(Request $request)
     {
-        // For now, return a mock user since we don't have proper token validation
+        // Get the authenticated user
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated'], 401);
+        }
+        
+        // Get role name directly using role_id
+        $roleName = 'Unknown';
+        if ($user->role_id) {
+            $role = \App\Models\Role::find($user->role_id);
+            if ($role) {
+                $roleName = $role->name; // Use the role name, not slug
+            }
+        }
+        
         return response()->json([
             'user' => [
-                'id' => 1,
-                'name' => 'Иван Иванов',
-                'email' => 'ivan@admin.local',
-                'role' => 'owner'
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $roleName, // Use the proper role name
+                'email_verified_at' => $user->email_verified_at,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
             ]
         ], 200);
     }
