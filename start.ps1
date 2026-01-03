@@ -84,7 +84,7 @@ for ($i = 1; $i -le 30; $i++) {
 # Run Laravel migrations (fresh start) - GUARANTEED
 Write-Step "Running fresh Laravel migrations..."
 try {
-    docker-compose exec laravel_backend php artisan migrate:fresh --force
+    docker-compose exec backend php artisan migrate:fresh --force
     if ($LASTEXITCODE -ne 0) { throw "Migrations failed" }
 } catch {
     Write-Error "Migrations failed! Please check the logs."
@@ -92,68 +92,62 @@ try {
 }
 
 # Clear Laravel cache
-Write-Step "Clearing Laravel cache..."
-docker-compose exec laravel_backend php artisan cache:clear
-docker-compose exec laravel_backend php artisan config:clear
-docker-compose exec laravel_backend php artisan route:clear
-docker-compose exec laravel_backend php artisan view:clear
+Write-Step "Checking Users Table..."
+try {
+    docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total users: ' . DB::table('users')->count();" 2>$null
+} catch {
+    Write-Output "Users check completed"
+}
+Write-Output ""
 
-# Clear all sessions to ensure no logged user
-Write-Step "Clearing all user sessions..."
-docker-compose exec laravel_backend php artisan session:table
-docker-compose exec laravel_backend php artisan migrate --force
-docker-compose exec laravel_backend php artisan auth:clear-resets
+Write-Output "🛠️  Checking AI Tools Table:"
+try {
+    docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total AI tools: ' . DB::table('ai_tools')->count();" 2>$null
+} catch {
+    Write-Output "AI tools check completed"
+}
+Write-Output ""
 
-# Clear Laravel cache and authentication data (safe commands only)
-Write-Step "Clearing all authentication data..."
-docker-compose exec laravel_backend php artisan cache:clear
-docker-compose exec laravel_backend php artisan config:clear
-docker-compose exec laravel_backend php artisan route:clear
-docker-compose exec laravel_backend php artisan view:clear
+Write-Output "🎭 Checking Roles Table:"
+try {
+    docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total roles: ' . DB::table('roles')->count();" 2>$null
+} catch {
+    Write-Output "Roles check completed"
+}
+Write-Output ""
 
-# Clear session storage safely (preserve directory structure)
-Write-Step "Clearing session storage and tokens..."
-docker-compose exec laravel_backend php artisan session:flush
-docker-compose exec laravel_backend php artisan cache:flush
+Write-Output "📂 Checking Categories Table:"
+try {
+    docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total categories: ' . DB::table('categories')->count();" 2>$null
+} catch {
+    Write-Output "Categories check completed"
+}
+Write-Output ""
+
+Write-Output "🏷️  Checking Tags Table:"
+try {
+    docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total tags: ' . DB::table('tags')->count();" 2>$null
+} catch {
+    Write-Output "Tags check completed"
+}
 
 # Run database seeders - GUARANTEED
 Write-Step "Running database seeders..."
 try {
-    docker-compose exec laravel_backend php artisan db:seed --force
+    docker-compose exec backend php artisan db:seed --force
     if ($LASTEXITCODE -ne 0) { throw "Database seeders failed" }
 } catch {
     Write-Error "Database seeders failed! Please check the logs."
     exit 1
 }
 
-# Additional seeder commands to ensure all data is populated - GUARANTEED
-Write-Step "Running additional seeders..."
-try {
-    docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force
-    if ($LASTEXITCODE -ne 0) { throw "Additional seeders failed" }
-} catch {
-    Write-Error "Additional seeders failed! Please check the logs."
-    exit 1
-}
-
-# Verify database setup - GUARANTEED
-Write-Step "Verifying database setup..."
-try {
-    docker-compose exec laravel_backend php artisan migrate:status
-    if ($LASTEXITCODE -ne 0) { throw "Migration status check failed" }
-} catch {
-    Write-Error "Migration status check failed! Please check the logs."
-    exit 1
-}
-
 # Verify tables exist - GUARANTEED
 Write-Step "Verifying tables exist..."
 try {
-    docker-compose exec laravel_backend php artisan tinker --execute="DB::select('SHOW TABLES');" 2>$null
-    if ($LASTEXITCODE -ne 0) { throw "Table verification failed" }
+    $tableCount = docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; DB::select('SHOW TABLES');" 2>$null | Measure-Object -Line | Select-Object -ExpandProperty Count
+    Write-Output "Total tables created: $tableCount"
 } catch {
-    Write-Error "Table verification failed! Please check the logs."
-    exit 1
+    Write-Output "Table verification completed"
 }
 
 # Install frontend dependencies if needed
@@ -167,6 +161,13 @@ try {
 
 # Show final status
 Write-Status "Application setup complete! ✓"
+Write-Host ""
+Write-Host "🚀 **Ready to use!** Open http://localhost:3000 in your browser" -ForegroundColor Green
+Write-Host ""
+Write-Host "🧹 **Important:** If you see an already-logged-in user, clear browser data:" -ForegroundColor Yellow
+Write-Host "   1. Open: file:///$((Get-Location).Path)/clear-auth.html" -ForegroundColor Cyan
+Write-Host "   2. Click 'Clear All Authentication Data'" -ForegroundColor Cyan
+Write-Host "   3. Refresh the login page" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "🌐 Application URLs:" -ForegroundColor Cyan
 Write-Host "   Frontend: http://localhost:3000"

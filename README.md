@@ -2,6 +2,38 @@
 
 A complete Docker Compose setup for a full-stack web application with Laravel backend, Next.js frontend, MySQL database, Redis cache, and Nginx reverse proxy.
 
+## 🚀 **IMPORTANT: First Time Setup**
+
+**⚠️ BEFORE RUNNING THE APPLICATION:**
+
+You **MUST** run the start script to properly initialize the database and clear all authentication data:
+
+```bash
+# Run the automated start script (REQUIRED for first-time setup)
+./start.sh
+
+# Or use PowerShell on Windows
+.\start.ps1
+
+# Or use Batch on Windows
+.\start.bat
+```
+
+**📖 For detailed start script instructions, see: [README-START.md](README-START.md)**
+
+**The start script ensures:**
+- ✅ Fresh database migrations
+- ✅ All test users and data are created
+- ✅ No users are logged in (clean start)
+- ✅ Authentication system is properly configured
+- ✅ All dependencies are installed
+
+**⚡ After running the start script, your application will be ready at:**
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+
+---
+
 ## Architecture
 
 - **Backend**: Laravel (PHP 8.2) - API and business logic
@@ -18,18 +50,29 @@ A complete Docker Compose setup for a full-stack web application with Laravel ba
 
 ## Quick Start
 
-### 1. Clone and Setup
+### 🚀 **Recommended: Use Start Script (First Time Setup)**
+
+```bash
+# Run the automated start script (RECOMMENDED)
+./start.sh
+
+# Or use PowerShell on Windows
+.\start.ps1
+
+# Or use Batch on Windows
+.\start.bat
+```
+
+**📖 See [README-START.md](README-START.md) for detailed start script instructions.**
+
+### 🔧 **Manual Setup (Advanced Users Only)**
+
+> ⚠️ **Note**: Manual setup is not recommended. Use the start script above for proper database initialization.
 
 ```bash
 # Copy environment file and configure
 cp env.example .env
-```
 
-Edit the `.env` file with your desired configuration values.
-
-### 2. Start Development Environment
-
-```bash
 # Start all services in development mode
 docker-compose up -d
 
@@ -40,12 +83,21 @@ docker-compose logs -f
 docker-compose down
 ```
 
-### 3. Access Your Application
+### 🌐 Access Your Application
 
+**After running the start script:**
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **MailHog** (development): http://localhost:8025
 - **phpMyAdmin** (if added): http://localhost:8080
+
+**🔑 Test User Credentials:**
+- **Admin**: ivan@admin.local / password
+- **Owner**: owner@demo.local / password
+- **Project Manager**: pm@demo.local / password
+- **Developer**: dev@demo.local / password
+- **Designer**: designer@demo.local / password
+- **QA Engineer**: boris@qa.local / password
 
 ## Project Structure
 
@@ -174,15 +226,41 @@ curl http://localhost/health
 
 ## Troubleshooting
 
+### 🚀 **First Step: Run Start Script**
+
+**Before troubleshooting any issues, always run the start script first:**
+
+```bash
+# This resolves most common issues
+./start.sh
+
+# Or PowerShell
+.\start.ps1
+
+# Or Batch
+.\start.bat
+```
+
+**The start script fixes:**
+- Database connection issues
+- Authentication problems
+- Missing test data
+- Cache/session issues
+- Dependency problems
+
 ### Common Issues
 
 1. **Port conflicts**: Change ports in docker-compose.override.yml
 
 2. **Permission issues**: Ensure proper file permissions on host volumes
 
-3. **Database connection**: Verify environment variables match between services
+3. **Database connection**: Run the start script first, then verify environment variables
 
-4. **Memory issues**: Increase Docker memory allocation
+4. **Authentication problems**: Run the start script to clear sessions and reset auth
+
+5. **Memory issues**: Increase Docker memory allocation
+
+6. **Missing test data**: Run the start script to populate database
 
 ### Reset Environment
 

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Authentication Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; cursor: pointer; margin: 10px 5px; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Authentication Data</h1>
+        <p>This page will clear all authentication tokens and session data from your browser.</p>
+        
+        <h3>What will be cleared:</h3>
+        <ul>
+            <li>Authentication tokens (localStorage)</li>
+            <li>Session data (sessionStorage)</li>
+            <li>Browser cookies</li>
+        </ul>
+        
+        <button onclick="clearAllData()">Clear All Authentication Data</button>
+        <button onclick="goToLogin()">Go to Login Page</button>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        function clearAllData() {
+            try {
+                // Clear localStorage
+                localStorage.clear();
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                
+                // Clear cookies
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                document.getElementById('message').innerHTML = '<p class="success">✅ All authentication data cleared successfully!</p>';
+                
+                // Redirect to login after 2 seconds
+                setTimeout(() => {
+                    window.location.href = 'http://localhost:3000/login';
+                }, 2000);
+                
+            } catch (error) {
+                document.getElementById('message').innerHTML = '<p class="error">❌ Error clearing data: ' + error.message + '</p>';
+            }
+        }
+        
+        function goToLogin() {
+            window.location.href = 'http://localhost:3000/login';
+        }
+    </script>
+</body>
+</html>

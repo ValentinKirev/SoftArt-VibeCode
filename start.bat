@@ -65,7 +65,7 @@ goto db_loop
 
 REM Run Laravel migrations (fresh start) - GUARANTEED
 echo [STEP] Running fresh Laravel migrations...
-docker-compose exec laravel_backend php artisan migrate:fresh --force
+docker-compose exec backend php artisan migrate:fresh --force
 if %errorlevel% neq 0 (
     echo [ERROR] Migrations failed! Please check the logs.
     exit /b 1
@@ -73,32 +73,23 @@ if %errorlevel% neq 0 (
 
 REM Clear Laravel cache
 echo [STEP] Clearing Laravel cache...
-docker-compose exec laravel_backend php artisan cache:clear
-docker-compose exec laravel_backend php artisan config:clear
-docker-compose exec laravel_backend php artisan route:clear
-docker-compose exec laravel_backend php artisan view:clear
+docker-compose exec backend php artisan cache:clear
+docker-compose exec backend php artisan config:clear
+docker-compose exec backend php artisan route:clear
 
 REM Clear all sessions to ensure no logged user
 echo [STEP] Clearing all user sessions...
-docker-compose exec laravel_backend php artisan session:table
-docker-compose exec laravel_backend php artisan migrate --force
-docker-compose exec laravel_backend php artisan auth:clear-resets
+docker-compose exec backend php artisan auth:clear-resets
 
 REM Clear Laravel cache and authentication data (safe commands only)
 echo [STEP] Clearing all authentication data...
-docker-compose exec laravel_backend php artisan cache:clear
-docker-compose exec laravel_backend php artisan config:clear
-docker-compose exec laravel_backend php artisan route:clear
-docker-compose exec laravel_backend php artisan view:clear
-
-REM Clear session storage safely (preserve directory structure)
-echo [STEP] Clearing session storage and tokens...
-docker-compose exec laravel_backend php artisan session:flush
-docker-compose exec laravel_backend php artisan cache:flush
+docker-compose exec backend php artisan cache:clear
+docker-compose exec backend php artisan config:clear
+docker-compose exec backend php artisan route:clear
 
 REM Run database seeders - GUARANTEED
 echo [STEP] Running database seeders...
-docker-compose exec laravel_backend php artisan db:seed --force
+docker-compose exec backend php artisan db:seed --force
 if %errorlevel% neq 0 (
     echo [ERROR] Database seeders failed! Please check the logs.
     exit /b 1
@@ -106,7 +97,7 @@ if %errorlevel% neq 0 (
 
 REM Additional seeder commands to ensure all data is populated - GUARANTEED
 echo [STEP] Running additional seeders...
-docker-compose exec laravel_backend php artisan db:seed --class=DatabaseSeeder --force
+docker-compose exec backend php artisan db:seed --class=DatabaseSeeder --force
 if %errorlevel% neq 0 (
     echo [ERROR] Additional seeders failed! Please check the logs.
     exit /b 1
@@ -114,7 +105,7 @@ if %errorlevel% neq 0 (
 
 REM Verify database setup - GUARANTEED
 echo [STEP] Verifying database setup...
-docker-compose exec laravel_backend php artisan migrate:status
+docker-compose exec backend php artisan migrate:status
 if %errorlevel% neq 0 (
     echo [ERROR] Migration status check failed! Please check the logs.
     exit /b 1
@@ -122,7 +113,7 @@ if %errorlevel% neq 0 (
 
 REM Verify tables exist - GUARANTEED
 echo [STEP] Verifying tables exist...
-docker-compose exec laravel_backend php artisan tinker --execute="DB::select('SHOW TABLES');" >nul 2>&1
+docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; DB::select('SHOW TABLES');" >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Table verification failed! Please check the logs.
     exit /b 1
@@ -138,6 +129,13 @@ if %errorlevel% neq 0 (
 
 REM Show final status
 echo [INFO] Application setup complete! ✓
+echo.
+echo 🚀 **Ready to use!** Open http://localhost:3000 in your browser
+echo.
+echo 🧹 **Important:** If you see an already-logged-in user, clear browser data:
+echo    1. Open: file:///%CD%/clear-auth.html
+echo    2. Click 'Clear All Authentication Data'
+echo    3. Refresh the login page
 echo.
 echo 🌐 Application URLs:
 echo    Frontend: http://localhost:3000
