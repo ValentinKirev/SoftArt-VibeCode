@@ -1,6 +1,6 @@
-# SoftArt AI HUB - Docker Development Environment
+# SoftArt VibeCode - AI Tools Management Platform
 
-A complete Docker Compose setup for a full-stack web application with Laravel backend, Next.js frontend, MySQL database, Redis cache, and Nginx reverse proxy.
+A comprehensive Docker-based full-stack application for managing AI tools with role-based access control, authentication, and a modern React interface.
 
 ## 🚀 **IMPORTANT: First Time Setup**
 
@@ -27,6 +27,11 @@ You **MUST** run the start script to properly initialize the database and clear 
 - ✅ No users are logged in (clean start)
 - ✅ Authentication system is properly configured
 - ✅ All dependencies are installed
+- ✅ Admin panel access control working
+- ✅ Avatar upload system configured
+- ✅ Owner auto-approval system enabled
+- ✅ CORS properly configured
+- ✅ Session management optimized
 
 **⚡ After running the start script, your application will be ready at:**
 - **Frontend**: http://localhost:3000
@@ -34,19 +39,84 @@ You **MUST** run the start script to properly initialize the database and clear 
 
 ---
 
+## 🎯 **Project Overview**
+
+SoftArt VibeCode is an AI tools management platform featuring:
+
+- **🔐 Role-Based Access Control** - Owner, Admin, Developer, Designer, QA roles
+- **🛠️ AI Tools Management** - Create, edit, approve, and manage AI tools
+- **📊 Dashboard Analytics** - Tool statistics, status tracking, pending approvals
+- **🎨 Modern UI** - React with TypeScript, responsive design, real-time updates
+- **🔍 Advanced Filtering** - Search by name, category, tags, roles, status
+- **✅ Approval Workflow** - Tool approval system with owner auto-approval
+- **📱 Mobile Responsive** - Works seamlessly on all devices
+- **👤 Avatar Management** - User avatar upload and display system
+- **🔧 Enhanced Tool Editor** - Improved form handling and data persistence
+- **🌐 CORS Optimized** - Proper cross-origin request handling
+
+---
+
 ## Architecture
 
-- **Backend**: Laravel (PHP 8.2) - API and business logic
-- **Frontend**: Next.js with React and TypeScript - User interface
-- **Database**: MySQL 8.0 - Data persistence
-- **Cache**: Redis 7 - Caching and sessions
-- **Web Server**: Nginx - Reverse proxy and static file serving
+- **Backend**: Laravel 10 (PHP 8.2) - API, authentication, business logic
+- **Frontend**: Next.js 14 with React 18 and TypeScript - Modern UI
+- **Database**: MySQL 8.0 - Data persistence with proper relationships
+- **Cache**: Redis 7 - Session management and caching
+- **Authentication**: Laravel Breeze with cookie-based sessions
+- **UI Framework**: Custom components with Tailwind CSS styling
+- **Custom Router**: Optimized PHP router for enhanced API performance
+
+---
+
+## 🌐 **Key Features**
+
+### **Authentication & Authorization**
+- Laravel Breeze authentication system
+- Role-based access control (RBAC)
+- Cookie-based sessions with CSRF protection
+- Secure API endpoints with middleware
+- Enhanced session management and cleanup
+
+### **Admin Panel (Owner Access Only)**
+- Complete tools management interface
+- Approval workflow for new tools
+- **Owner Auto-Approval**: Tools created by owners are automatically approved
+- User management and role assignment
+- System statistics and analytics
+- Advanced filtering and pagination
+- **Enhanced Tool Editor**: Improved form handling with proper data persistence
+
+### **User Dashboard**
+- Personal tool recommendations
+- Tool browsing and searching
+- **Profile Management**: Avatar upload and display
+- Activity tracking
+
+### **Tool Management**
+- Create and edit AI tools with detailed information
+- **"How to Use" Field**: Properly saved and displayed long descriptions
+- Category and tag organization
+- Status management (active, beta, inactive)
+- Documentation and examples
+- API integration support
+- **Enhanced Form Handling**: No more field repopulation issues
+
+### **Avatar System**
+- **User Avatar Upload**: Drag-and-drop or click-to-upload functionality
+- **File Validation**: JPEG, PNG, GIF, WebP support with size limits
+- **Secure Storage**: Proper file storage and serving
+- **Real-time Display**: Immediate avatar updates in UI
+
+---
 
 ## Prerequisites
 
-- Docker Engine
+- Docker Desktop installed and running
 - Docker Compose
 - At least 4GB RAM available for containers
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+
+---
 
 ## Quick Start
 
@@ -88,39 +158,46 @@ docker-compose down
 **After running the start script:**
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
-- **MailHog** (development): http://localhost:8025
-- **phpMyAdmin** (if added): http://localhost:8080
+- **API Documentation**: http://localhost:8000/api/test
 
 **🔑 Test User Credentials:**
 - **Admin**: ivan@admin.local / password
-- **Owner**: owner@demo.local / password
+- **Owner**: owner@demo.local / password (Full admin panel access, auto-approval)
 - **Project Manager**: pm@demo.local / password
 - **Developer**: dev@demo.local / password
 - **Designer**: designer@demo.local / password
 - **QA Engineer**: boris@qa.local / password
 
-## Project Structure
+---
+
+## 📁 **Project Structure**
 
 ```
 .
-├── docker-compose.yml          # Production configuration
-├── docker-compose.override.yml # Development overrides
+├── docker-compose.yml          # Docker services configuration
 ├── backend/                    # Laravel application
+│   ├── app/                    # Application logic
+│   ├── database/              # Migrations and seeders
+│   ├── routes/                # API routes
+│   ├── public/index.php       # Custom PHP router
 │   └── Dockerfile
 ├── frontend/                   # Next.js application
+│   ├── components/            # React components
+│   ├── pages/                 # Next.js pages
+│   ├── hooks/                 # Custom React hooks
+│   ├── contexts/              # React contexts
 │   └── Dockerfile
-├── docker/
-│   ├── nginx/
-│   │   ├── nginx.conf
-│   │   └── conf.d/
-│   │       └── app.conf
-│   └── mysql/
-│       └── my.cnf
-├── ssl/                        # SSL certificates (optional)
-└── env.example                 # Environment variables template
+├── docker/                    # Docker configurations
+├── ssl/                       # SSL certificates (optional)
+├── start.sh                   # Automated setup script
+├── README.md                  # This file
+├── README-START.md           # Start script guide
+└── env.example                # Environment variables template
 ```
 
-## Development Workflow
+---
+
+## 🛠️ **Development Workflow**
 
 ### Starting Services
 
@@ -128,103 +205,82 @@ docker-compose down
 # Development mode (with hot reload)
 docker-compose up -d
 
-# Production mode (with nginx)
-docker-compose --profile production up -d
+# View logs for all services
+docker-compose logs -f
 
-# Include development tools (MailHog)
-docker-compose --profile dev-tools up -d
+# View logs for specific service
+docker-compose logs -f frontend
+docker-compose logs -f backend
 ```
 
 ### Working with Individual Services
 
 ```bash
 # Laravel backend
-docker-compose exec laravel bash
-docker-compose exec laravel php artisan migrate
-docker-compose exec laravel composer install
+docker-compose exec backend bash
+docker-compose exec backend php artisan migrate
+docker-compose exec backend php artisan tinker
 
 # Next.js frontend
-docker-compose exec nextjs bash
-docker-compose exec nextjs npm install
-
-# Database
-docker-compose exec mysql mysql -u vibecode_user -p vibecode_db
+docker-compose exec frontend bash
+docker-compose exec frontend npm install
+docker-compose exec frontend npm run build
 ```
 
 ### Database Operations
 
 ```bash
 # Create backup
-docker-compose exec mysql mysqldump -u vibecode_user -p vibecode_db > backup.sql
+docker-compose exec mysql mysqldump -u root -proot_password vibecode_db > backup.sql
 
 # Restore backup
-docker-compose exec -T mysql mysql -u vibecode_user -p vibecode_db < backup.sql
+docker-compose exec -T mysql mysql -u root -proot_password vibecode_db < backup.sql
 
-# Access Redis CLI
-docker-compose exec redis redis-cli -a redis_secure_password
+# Access MySQL CLI
+docker-compose exec mysql mysql -u root -proot_password vibecode_db
 ```
 
-## Environment Variables
+---
 
-Key environment variables to configure in your `.env` file:
+## 🔧 **Environment Configuration**
 
-| Variable | Description | Example |
+Key environment variables in `.env`:
+
+| Variable | Description | Default |
 |----------|-------------|---------|
-| `APP_KEY` | Laravel application key | `base64:your_generated_key` |
+| `APP_KEY` | Laravel application key | Auto-generated |
 | `DB_DATABASE` | MySQL database name | `vibecode_db` |
 | `DB_USERNAME` | MySQL user | `vibecode_user` |
 | `DB_PASSWORD` | MySQL password | `secure_password` |
-| `MYSQL_ROOT_PASSWORD` | MySQL root password | `root_secure_password` |
-| `REDIS_PASSWORD` | Redis password | `redis_secure_password` |
+| `MYSQL_ROOT_PASSWORD` | MySQL root password | `root_password` |
+| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:3000` |
+| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:8000` |
 
-Generate Laravel APP_KEY:
-```bash
-docker-compose exec laravel php artisan key:generate
-```
+---
 
-## SSL Configuration (Optional)
-
-For HTTPS support:
-
-1. Place your SSL certificates in the `ssl/` directory:
-   - `fullchain.pem` - Certificate chain
-   - `privkey.pem` - Private key
-
-2. Uncomment SSL configuration in `docker/nginx/conf.d/app.conf`
-
-3. Update docker-compose.yml to mount SSL certificates
-
-## Performance Optimization
+## 🚀 **Deployment Notes**
 
 ### Production Considerations
 
-1. **Enable Nginx profile** for production:
-   ```bash
-   docker-compose --profile production up -d
-   ```
+1. **Environment Variables**: Set production values in `.env`
+2. **Database**: Use production MySQL credentials
+3. **SSL**: Configure HTTPS with SSL certificates
+4. **Performance**: Enable Redis caching and optimization
+5. **Security**: Update all default passwords and keys
 
-2. **Database optimization**:
-   - Adjust MySQL settings in `docker/mysql/my.cnf`
-   - Configure connection pooling in Laravel
-
-3. **Redis optimization**:
-   - Configure persistence if needed
-   - Set up Redis cluster for high availability
-
-### Monitoring
+### Docker Production
 
 ```bash
-# Check container resource usage
-docker stats
+# Production mode
+docker-compose -f docker-compose.yml --profile production up -d
 
-# View service logs
-docker-compose logs -f [service_name]
-
-# Health check
-curl http://localhost/health
+# With SSL
+docker-compose -f docker-compose.yml --profile ssl up -d
 ```
 
-## Troubleshooting
+---
+
+## 🐛 **Troubleshooting**
 
 ### 🚀 **First Step: Run Start Script**
 
@@ -247,20 +303,49 @@ curl http://localhost/health
 - Missing test data
 - Cache/session issues
 - Dependency problems
+- Admin panel access issues
+- Avatar upload configuration
+- CORS configuration issues
+- Storage link problems
 
 ### Common Issues
 
-1. **Port conflicts**: Change ports in docker-compose.override.yml
+1. **Port conflicts**: 
+   - Frontend uses port 3000 (external) / 3001 (internal)
+   - Backend uses port 8000
+   - MySQL uses port 3306
 
-2. **Permission issues**: Ensure proper file permissions on host volumes
+2. **Authentication problems**: 
+   - Run start script to clear sessions
+   - Clear browser cookies and localStorage
+   - Use `clear-auth.html` for complete reset
 
-3. **Database connection**: Run the start script first, then verify environment variables
+3. **Admin panel access**: 
+   - Only users with 'owner' role can access admin panel
+   - Use owner@demo.local / password for full access
 
-4. **Authentication problems**: Run the start script to clear sessions and reset auth
+4. **Database connection**: 
+   - Ensure MySQL container is running
+   - Check database credentials in .env
+   - Run migrations: `docker-compose exec backend php artisan migrate:fresh`
 
-5. **Memory issues**: Increase Docker memory allocation
+5. **Frontend build errors**: 
+   - Install dependencies: `docker-compose exec frontend npm install`
+   - Restart frontend: `docker-compose restart frontend`
 
-6. **Missing test data**: Run the start script to populate database
+6. **Avatar upload issues**: 
+   - Check storage permissions: `docker-compose exec backend ls -la storage/app/public/avatars`
+   - Verify CORS configuration
+   - Check file size limits (max 5MB)
+
+7. **Tool editing issues**: 
+   - "How to use" field not saving: Check long_description field mapping
+   - Field repopulation: Form state management issue - restart frontend
+   - CORS errors on update: Check credentials mode in fetch requests
+
+8. **Storage link errors**: 
+   - Run start script to fix storage link issues
+   - Manual fix: `docker-compose exec backend php artisan storage:link`
 
 ### Reset Environment
 
@@ -272,19 +357,98 @@ docker-compose down -v
 docker-compose build --no-cache
 
 # Start fresh
-docker-compose up -d
+./start.sh
 ```
 
-## Contributing
+---
+
+## 📊 **Application Features**
+
+### **Role-Based Access Control**
+- **Owner**: Full admin panel access, tool approval, user management, auto-approval for created tools
+- **Admin**: Tool management, basic user operations
+- **Project Manager**: Project oversight, tool coordination
+- **Developer**: Tool development, technical access
+- **Designer**: UI/UX tool access, design resources
+- **QA Engineer**: Testing tools, quality assurance access
+
+### **Tool Management**
+- Create and edit AI tools with detailed information
+- **"How to Use" Instructions**: Properly saved and displayed long descriptions
+- Categorize tools by type and purpose
+- Tag tools for better discoverability
+- Set tool status (active, beta, inactive)
+- **Owner Auto-Approval**: Tools created by owners are automatically approved
+- Approval workflow for quality control
+- **Enhanced Form Handling**: No field repopulation issues
+
+### **Dashboard Analytics**
+- Tool usage statistics
+- User activity tracking
+- System performance metrics
+- Pending approval notifications
+
+### **Avatar Management**
+- **Upload System**: Drag-and-drop or click-to-upload
+- **File Validation**: JPEG, PNG, GIF, WebP support
+- **Size Limits**: Maximum 5MB file size
+- **Secure Storage**: Proper file handling and serving
+- **Real-time Updates**: Immediate UI reflection
+
+---
+
+## 🤝 **Contributing**
 
 1. Make changes to the codebase
 2. Test with `docker-compose up -d`
 3. Ensure all services start correctly
-4. Update documentation as needed
+4. Run the start script to verify setup
+5. Update documentation as needed
+6. Test all user roles and permissions
+7. Verify avatar upload functionality
+8. Test tool creation and editing features
 
-## License
+---
 
-This project is part of the SoftArt AI HUB application.
+## 📄 **License**
+
+This project is part of the SoftArt VibeCode platform.
+
+---
+
+## 🎯 **Getting Help**
+
+- **Documentation**: Check README-START.md for detailed setup
+- **Issues**: Run the start script first for most problems
+- **Logs**: Use `docker-compose logs -f` to debug
+- **Database**: Access via `docker-compose exec mysql mysql -u root -proot_password vibecode_db`
+- **Avatar Issues**: Check storage permissions and CORS configuration
+- **Tool Editing**: Verify long_description field mapping and form state management
+
+---
+
+## 🆕 **Recent Updates & Fixes**
+
+### **✅ Latest Improvements:**
+- **Avatar Upload System**: Complete upload and display functionality
+- **Owner Auto-Approval**: Tools created by owners automatically approved
+- **Enhanced Tool Editor**: Fixed field repopulation issues
+- **CORS Optimization**: Proper cross-origin request handling
+- **Session Management**: Improved session clearing and cleanup
+- **Storage Link Fix**: Resolved "storage link already exists" errors
+- **Form State Management**: Better handling of tool editing forms
+- **Long Description Field**: Proper saving and display of "How to use" content
+
+### **🔧 Technical Improvements:**
+- **Custom PHP Router**: Optimized API request handling
+- **Enhanced Error Handling**: Better error messages and logging
+- **Docker Optimization**: Improved build context and caching
+- **TypeScript Interface Updates**: Added missing field definitions
+- **Authentication Flow**: Improved token handling and validation
+
+---
+
+**🚀 Ready to build amazing AI tools management with SoftArt VibeCode!**
 
 
 

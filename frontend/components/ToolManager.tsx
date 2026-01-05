@@ -163,9 +163,12 @@ const ToolManager: React.FC<ToolManagerProps> = ({ onClose, onSave, initialTool,
   useEffect(() => {
     if (initialTool) {
       const transformedTool = transformInitialTool(initialTool);
-      setTool(transformedTool);
+      // Only update state if this is a different tool (by ID) or we're switching from no tool to a tool
+      if (!tool.id || tool.id !== transformedTool.id) {
+        setTool(transformedTool);
+      }
     }
-  }, [initialTool]);
+  }, [initialTool, tool.id]);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
@@ -288,7 +291,7 @@ const ToolManager: React.FC<ToolManagerProps> = ({ onClose, onSave, initialTool,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify(newCategory),
       });

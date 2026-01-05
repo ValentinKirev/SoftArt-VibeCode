@@ -31,6 +31,7 @@ class UserSeeder extends Seeder
                 'role_id' => $ownerRole->id,
                 'is_active' => true,
                 'email_verified_at' => now(),
+                'avatar' => null,
             ]
         );
 
@@ -43,6 +44,7 @@ class UserSeeder extends Seeder
                 'role_id' => $pmRole->id,
                 'is_active' => true,
                 'email_verified_at' => now(),
+                'avatar' => null,
             ]
         );
 
@@ -55,6 +57,7 @@ class UserSeeder extends Seeder
                 'role_id' => $backendRole->id,
                 'is_active' => true,
                 'email_verified_at' => now(),
+                'avatar' => null,
             ]
         );
 
@@ -67,6 +70,7 @@ class UserSeeder extends Seeder
                 'role_id' => $frontendRole->id,
                 'is_active' => true,
                 'email_verified_at' => now(),
+                'avatar' => null,
             ]
         );
 
@@ -79,6 +83,7 @@ class UserSeeder extends Seeder
                 'role_id' => $designerRole->id,
                 'is_active' => true,
                 'email_verified_at' => now(),
+                'avatar' => null,
             ]
         );
 
@@ -91,6 +96,7 @@ class UserSeeder extends Seeder
                 'role_id' => $qaRole->id,
                 'is_active' => true,
                 'email_verified_at' => now(),
+                'avatar' => null,
             ]
         );
 

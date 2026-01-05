@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 interface GlobalAddToolModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveTool?: (tool: any) => Promise<void>;
+  onSaveTool?: (tool: any) => Promise<boolean>;
 }
 
 const GlobalAddToolModal: React.FC<GlobalAddToolModalProps> = ({ isOpen, onClose, onSaveTool }) => {
@@ -21,9 +21,12 @@ const GlobalAddToolModal: React.FC<GlobalAddToolModalProps> = ({ isOpen, onClose
 
   const handleSave = async (tool: any) => {
     if (onSaveTool) {
-      await onSaveTool(tool);
+      const success = await onSaveTool(tool);
+      // Only close modal if save was successful
+      if (success === true) {
+        onClose();
+      }
     }
-    onClose();
   };
 
   const handleClose = () => {

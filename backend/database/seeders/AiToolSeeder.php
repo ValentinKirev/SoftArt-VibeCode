@@ -29,8 +29,9 @@ class AiToolSeeder extends Seeder
                 'status' => 'active',
                 'requires_auth' => true,
                 'api_key_required' => true,
+                'is_approved' => true,
                 'categories' => ['text-generation'],
-                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer', 'qa'],
+                'roles' => ['Owner', 'Project Manager', 'Backend Developer', 'Frontend Developer', 'Designer', 'QA Engineer'],
                 'tags' => ['natural-language', 'machine-learning', 'productivity'],
             ],
             [
@@ -46,8 +47,9 @@ class AiToolSeeder extends Seeder
                 'status' => 'active',
                 'requires_auth' => true,
                 'api_key_required' => true,
+                'is_approved' => true,
                 'categories' => ['image-generation'],
-                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer'],
+                'roles' => ['Owner', 'Project Manager', 'Backend Developer', 'Frontend Developer', 'Designer'],
                 'tags' => ['computer-vision', 'creative', 'machine-learning'],
             ],
             [
@@ -63,8 +65,9 @@ class AiToolSeeder extends Seeder
                 'status' => 'active',
                 'requires_auth' => true,
                 'api_key_required' => false,
+                'is_approved' => true,
                 'categories' => ['code-generation'],
-                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer'],
+                'roles' => ['Owner', 'Project Manager', 'Backend Developer', 'Frontend Developer', 'Designer'],
                 'tags' => ['code-generation', 'productivity', 'automation'],
             ],
             [
@@ -80,8 +83,9 @@ class AiToolSeeder extends Seeder
                 'status' => 'active',
                 'requires_auth' => true,
                 'api_key_required' => true,
+                'is_approved' => true,
                 'categories' => ['text-generation'],
-                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer', 'qa'],
+                'roles' => ['Owner', 'Project Manager', 'Backend Developer', 'Frontend Developer', 'Designer', 'QA Engineer'],
                 'tags' => ['natural-language', 'machine-learning', 'research'],
             ],
             [
@@ -97,8 +101,9 @@ class AiToolSeeder extends Seeder
                 'status' => 'active',
                 'requires_auth' => true,
                 'api_key_required' => false,
+                'is_approved' => true,
                 'categories' => ['image-generation'],
-                'roles' => ['owner', 'pm', 'frontend', 'designer'],
+                'roles' => ['Owner', 'Project Manager', 'Frontend Developer', 'Designer'],
                 'tags' => ['computer-vision', 'creative'],
             ],
             [
@@ -114,8 +119,9 @@ class AiToolSeeder extends Seeder
                 'status' => 'beta',
                 'requires_auth' => true,
                 'api_key_required' => false,
+                'is_approved' => true,
                 'categories' => ['code-generation'],
-                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer'],
+                'roles' => ['Owner', 'Project Manager', 'Backend Developer', 'Frontend Developer', 'Designer'],
                 'tags' => ['code-generation', 'productivity'],
             ],
             [
@@ -131,8 +137,9 @@ class AiToolSeeder extends Seeder
                 'status' => 'active',
                 'requires_auth' => true,
                 'api_key_required' => true,
+                'is_approved' => true,
                 'categories' => ['image-generation'],
-                'roles' => ['owner', 'pm', 'backend'],
+                'roles' => ['Owner', 'Project Manager', 'Backend Developer'],
                 'tags' => ['computer-vision', 'research'],
             ],
             [
@@ -148,8 +155,9 @@ class AiToolSeeder extends Seeder
                 'status' => 'active',
                 'requires_auth' => true,
                 'api_key_required' => true,
+                'is_approved' => true,
                 'categories' => ['audio-processing'],
-                'roles' => ['owner', 'pm', 'backend', 'frontend', 'designer'],
+                'roles' => ['Owner', 'Project Manager', 'Backend Developer', 'Frontend Developer', 'Designer'],
                 'tags' => ['audio-processing', 'machine-learning'],
             ],
         ];
@@ -169,6 +177,7 @@ class AiToolSeeder extends Seeder
                     'status' => $toolData['status'],
                     'requires_auth' => $toolData['requires_auth'],
                     'api_key_required' => $toolData['api_key_required'],
+                    'is_approved' => $toolData['is_approved'],
                 ]
             );
 
@@ -180,7 +189,7 @@ class AiToolSeeder extends Seeder
 
             // Attach roles
             if (isset($toolData['roles'])) {
-                $roleIds = Role::whereIn('slug', $toolData['roles'])->pluck('id');
+                $roleIds = Role::whereIn('name', $toolData['roles'])->pluck('id');
                 $tool->roles()->sync($roleIds);
             }
 

@@ -34,7 +34,7 @@ interface GlobalAddToolContextType {
   isAddToolModalOpen: boolean;
   openAddToolModal: () => void;
   closeAddToolModal: () => void;
-  handleSaveTool: (tool: Tool) => Promise<void>;
+  handleSaveTool: (tool: Tool) => Promise<boolean>; // Return true on success, false on validation error
   refreshTrigger: number;
   triggerRefresh: () => void;
   toast: ToastMessage | null;
@@ -68,7 +68,7 @@ export const GlobalAddToolProvider: React.FC<GlobalAddToolProviderProps> = ({ ch
     setIsAddToolModalOpen(false);
   };
 
-  const handleSaveTool = async (tool: Tool) => {
+  const handleSaveTool = async (tool: Tool): Promise<boolean> => {
     try {
       // Validation: ensure at least one tag is selected
       if (!tool.tags || tool.tags.length === 0) {
@@ -76,14 +76,14 @@ export const GlobalAddToolProvider: React.FC<GlobalAddToolProviderProps> = ({ ch
           message: 'Please select at least one tag for the tool',
           type: 'warning'
         });
-        return;
+        return false;
       }
       
       const url = tool.id 
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/tools/${tool.id}`
         : `${process.env.NEXT_PUBLIC_API_URL}/api/tools`;
       
-      const method = tool.id ? 'PATCH' : 'POST';
+      const method = tool.id ? 'PUT' : 'POST';
       
       console.log('Saving tool:', tool); // Debug logging
       console.log('Request URL:', url); // Debug URL
@@ -98,6 +98,7 @@ export const GlobalAddToolProvider: React.FC<GlobalAddToolProviderProps> = ({ ch
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
           'Accept': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
         credentials: 'omit',
         body: requestBody,
@@ -136,11 +137,64 @@ export const GlobalAddToolProvider: React.FC<GlobalAddToolProviderProps> = ({ ch
         });
         
         console.log(`Tool ${action} successfully`);
+        
+        return true;
+      } else if (response.status === 400) {
+        // Handle validation errors specifically
+        console.error('Validation failed:', responseData);
+        console.log('Raw response text:', responseText);
+        
+        let errorMessage = 'Validation errors occurred';
+        
+        if (responseData.errors) {
+          // Laravel validation errors come as an object with field names as keys
+          const validationErrors = [];
+          for (const [field, messages] of Object.entries(responseData.errors)) {
+            if (Array.isArray(messages)) {
+              validationErrors.push(...messages);
+            } else {
+              validationErrors.push(messages);
+            }
+          }
+          errorMessage = validationErrors.join('\n\n');
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else if (responseText) {
+          // Fallback to raw response if we can't parse the structured errors
+          errorMessage = responseText;
+        }
+        
+        console.log('Final error message to display:', errorMessage);
+        
+        // Show error toast but DON'T close modal
+        setToast({
+          message: errorMessage,
+          type: 'error'
+        });
+        
+        console.log(`Validation error - modal should stay open`);
+        
+        // Don't call closeAddToolModal() for validation errors
+        return false;
       } else {
         console.error('Save failed:', responseData);
-        // Show error toast (same as dashboard)
+        
+        // Handle other errors
+        let errorMessage = 'Failed to save tool';
+        
+        if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else if (responseData.rawResponse) {
+          errorMessage = responseData.rawResponse;
+        }
+        
+        // Show error toast
         setToast({
-          message: 'Failed to save tool: ' + (responseData.error || responseData.rawResponse || 'Unknown error'),
+          message: errorMessage,
           type: 'error'
         });
       }
@@ -151,7 +205,11 @@ export const GlobalAddToolProvider: React.FC<GlobalAddToolProviderProps> = ({ ch
         message: 'Error saving tool: ' + (error instanceof Error ? error.message : 'Unknown error'),
         type: 'error'
       });
+      return false;
     }
+    
+    // Return true for success
+    return true;
   };
 
   const triggerRefresh = () => {

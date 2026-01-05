@@ -3,12 +3,45 @@
 <head>
     <title>Clear Authentication Data</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .success { color: green; font-weight: bold; }
-        .error { color: red; font-weight: bold; }
-        button { background: #007bff; color: white; padding: 10px 20px; border: none; cursor: pointer; margin: 10px 5px; }
-        button:hover { background: #0056b3; }
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .success { color: #4ade80; font-weight: bold; }
+        .error { color: #f87171; font-weight: bold; }
+        button { 
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6); 
+            color: white; 
+            padding: 15px 30px; 
+            border: none; 
+            cursor: pointer; 
+            margin: 10px 5px;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        h1 { text-align: center; margin-bottom: 30px; }
+        .info { 
+            background: rgba(59, 130, 246, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -16,15 +49,20 @@
         <h1>🧹 Clear Authentication Data</h1>
         <p>This page will clear all authentication tokens and session data from your browser.</p>
         
-        <h3>What will be cleared:</h3>
-        <ul>
-            <li>Authentication tokens (localStorage)</li>
-            <li>Session data (sessionStorage)</li>
-            <li>Browser cookies</li>
-        </ul>
+        <div class="info">
+            <h3>What will be cleared:</h3>
+            <ul>
+                <li>Authentication tokens (localStorage)</li>
+                <li>Session data (sessionStorage)</li>
+                <li>Browser cookies</li>
+                <li>All login sessions</li>
+            </ul>
+        </div>
         
-        <button onclick="clearAllData()">Clear All Authentication Data</button>
-        <button onclick="goToLogin()">Go to Login Page</button>
+        <div style="text-align: center; margin: 30px 0;">
+            <button onclick="clearAllData()">🧹 Clear All Authentication Data</button>
+            <button onclick="goToLogin()">🚀 Go to Login Page</button>
+        </div>
         
         <div id="message"></div>
     </div>
@@ -38,16 +76,21 @@
                 // Clear sessionStorage
                 sessionStorage.clear();
                 
-                // Clear cookies
+                // Clear cookies (all domains)
                 document.cookie.split(";").forEach(function(c) { 
-                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/;domain=" + location.hostname); 
                 });
                 
-                document.getElementById('message').innerHTML = '<p class="success">✅ All authentication data cleared successfully!</p>';
+                // Also try to clear cookies for localhost subdomains
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/;domain=localhost"); 
+                });
+                
+                document.getElementById('message').innerHTML = '<p class="success">✅ All authentication data cleared successfully!</p><p style="text-align: center; margin-top: 20px;">Redirecting to login page in 2 seconds...</p>';
                 
                 // Redirect to login after 2 seconds
                 setTimeout(() => {
-                    window.location.href = 'http://localhost:3000/login';
+                    window.location.href = 'http://localhost:3001/login';
                 }, 2000);
                 
             } catch (error) {
@@ -56,7 +99,7 @@
         }
         
         function goToLogin() {
-            window.location.href = 'http://localhost:3000/login';
+            window.location.href = 'http://localhost:3001/login';
         }
     </script>
 </body>

@@ -81,7 +81,7 @@ const Footer: React.FC = () => {
             </li>
             <li>
               <a
-                href="/tools"
+                href="/adminPanel"
                 style={{
                   color: '#e0e7ff',
                   fontSize: '0.875rem',

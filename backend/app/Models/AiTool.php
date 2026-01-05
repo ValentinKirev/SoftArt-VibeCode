@@ -27,6 +27,7 @@ class AiTool extends Model
         'api_key_required',
         'usage_limit',
         'metadata',
+        'is_approved',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class AiTool extends Model
         'api_key_required' => 'boolean',
         'usage_limit' => 'integer',
         'metadata' => 'array',
+        'is_approved' => 'boolean',
     ];
 
     /**

@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import ToolManager from '../components/ToolManager';
+import MobileMenu from '../components/MobileMenu';
 import { useAuth } from '../hooks/useAuth';
 
 const Home: NextPage = () => {
@@ -10,6 +11,7 @@ const Home: NextPage = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [showToolManager, setShowToolManager] = useState(false);
   const [editingTool, setEditingTool] = useState<any>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const { user, loading, logout } = useAuth();
 
@@ -93,9 +95,21 @@ const Home: NextPage = () => {
     // Trigger page load animation
     const timeout = setTimeout(() => setIsLoaded(true), 200);
 
+    // Check screen width and update mobile state
+    const checkScreenWidth = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+
+    // Initial check
+    checkScreenWidth();
+
+    // Add resize listener
+    window.addEventListener('resize', checkScreenWidth);
+
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
+      window.removeEventListener('resize', checkScreenWidth);
     };
   }, [updateTime]);
 
@@ -453,6 +467,33 @@ const Home: NextPage = () => {
             }
           }
 
+          /* Responsive navigation */
+          @media (max-width: 1200px) {
+            .desktop-nav {
+              gap: clamp(0.25rem, 1.5vw, 0.75rem) !important;
+            }
+            .desktop-nav nav {
+              gap: clamp(0.25rem, 1.5vw, 0.75rem) !important;
+            }
+          }
+          
+          @media (max-width: 900px) {
+            .desktop-nav {
+              gap: clamp(0.25rem, 1vw, 0.5rem) !important;
+            }
+            .desktop-nav nav {
+              gap: clamp(0.25rem, 1vw, 0.5rem) !important;
+            }
+          }
+          
+          @media (max-width: 768px) {
+            .desktop-nav {
+              gap: 0.25rem !important;
+            }
+            .desktop-nav nav {
+              gap: 0.25rem !important;
+            }
+          }
 
         `}</style>
       </Head>
@@ -462,22 +503,22 @@ const Home: NextPage = () => {
         background: 'rgba(0,0,0,0.2)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
-        padding: '1rem',
+        padding: 'clamp(0.75rem, 2vw, 1rem)',
         position: 'relative',
         zIndex: 10,
         transition: 'all 0.3s ease',
         opacity: isLoaded ? 1 : 0,
         transform: isLoaded ? 'translateY(0)' : 'translateY(-20px)'
       }}>
-        <div style={{maxWidth: '80rem', margin: '0 auto', padding: '0 1rem'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+        <div style={{maxWidth: '80rem', margin: '0 auto', padding: '0 clamp(0.5rem, 2vw, 1rem)'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', flex: '1', minWidth: 'fit-content'}}>
               <a href="/" style={{textDecoration: 'none'}}>
                 <div className="header-logo-effect" style={{
-                  width: '5rem',
-                  height: '5rem',
+                  width: 'clamp(3rem, 8vw, 5rem)',
+                  height: 'clamp(3rem, 8vw, 5rem)',
                   background: 'linear-gradient(to bottom right, #7c3aed, #3730a3)',
-                  borderRadius: '1rem',
+                  borderRadius: 'clamp(0.5rem, 2vw, 1rem)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -510,114 +551,154 @@ const Home: NextPage = () => {
                   />
                 </div>
               </a>
-              <div>
-                <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'white'}}>SoftArt AI HUB</h1>
-                <p style={{color: '#fbbf24', fontSize: '0.875rem'}}>AI Tools Platform</p>
+              <div style={{flex: '1', minWidth: 'fit-content'}}>
+                <h1 style={{fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', fontWeight: 'bold', color: 'white', lineHeight: 1.2}}>SoftArt AI HUB</h1>
+                <p style={{color: '#fbbf24', fontSize: 'clamp(0.75rem, 2vw, 0.875rem)'}}>AI Tools Platform</p>
               </div>
             </div>
-            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <div style={{
-                color: '#fbbf24',
-                fontSize: '0.875rem',
-                background: 'rgba(0,0,0,0.3)',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '0.5rem'
-              }}>
-                {currentTime || 'Loading...'}
-              </div>
-              <nav style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
-                {user ? (
-                  <>
-                    <div style={{
-                      color: '#fbbf24',
-                      fontSize: '0.875rem',
-                      background: 'rgba(0,0,0,0.3)',
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '0.5rem'
-                    }}>
-                      User ID: {user?.id || 'Loading...'}
-                    </div>
-                    <button
-                      onClick={() => router.push('/tools')}
-                      className="tools-button-effect"
-                      style={{
+            <div style={{display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '1', minWidth: 'fit-content'}}>
+              {/* Desktop Navigation */}
+              <div className="desktop-nav" style={{display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                <nav style={{display: 'flex', gap: 'clamp(0.5rem, 2vw, 1rem)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                  <div style={{
+                    color: '#fbbf24',
+                    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: 'clamp(0.25rem, 1vw, 0.5rem) clamp(0.5rem, 2vw, 0.75rem)',
+                    borderRadius: '0.5rem',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {currentTime || 'Loading...'}
+                  </div>
+                  {user ? (
+                    <>
+                      <div style={{
                         color: '#fbbf24',
-                        border: '1px solid rgba(4, 120, 87, 0.3)',
-                        padding: '0.5rem 1.5rem',
+                        fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+                        background: 'rgba(0,0,0,0.3)',
+                        padding: 'clamp(0.25rem, 1vw, 0.5rem) clamp(0.5rem, 2vw, 0.75rem)',
                         borderRadius: '0.5rem',
-                        background: 'linear-gradient(135deg, #047857, #0891b2)',
-                        cursor: 'pointer',
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#fbbf24';
-                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
-                        e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
-                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                        e.currentTarget.style.boxShadow = 'none';
-                        e.currentTarget.style.textShadow = 'none';
-                      }}
-                    >
-                      🧰 AI Tools
-                    </button>
-                    <button
-                      onClick={() => router.push('/dashboard')}
-                      className="dashboard-button-effect"
-                      style={{
-                        color: '#fbbf24',
-                        border: '1px solid rgba(4, 120, 87, 0.3)',
-                        padding: '0.5rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        background: 'linear-gradient(135deg, #047857, #0891b2)',
-                        cursor: 'pointer',
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        fontSize: '0.875rem',
-                        fontWeight: 'bold'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#fbbf24';
-                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
-                        e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
-                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                        e.currentTarget.style.boxShadow = 'none';
-                        e.currentTarget.style.textShadow = 'none';
-                      }}
-                    >
-                      📊 Dashboard
-                    </button>
+                        whiteSpace: 'nowrap'
+                      }}>
+                        User ID: {user?.id || 'Loading...'}
+                      </div>
+                      {/* Admin Panel Button - Only for Owner */}
+                      {user?.role === 'owner' && (
+                        <button
+                          onClick={() => router.push('/adminPanel')}
+                          className="tools-button-effect"
+                          style={{
+                            color: '#fbbf24',
+                            border: '1px solid rgba(4, 120, 87, 0.3)',
+                            padding: '0.5rem 1.5rem',
+                            borderRadius: '0.5rem',
+                            background: 'linear-gradient(135deg, #047857, #0891b2)',
+                            fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            whiteSpace: 'nowrap'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#fbbf24';
+                            e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                            e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                            e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.textShadow = 'none';
+                          }}
+                        >
+                          ⚙️ Admin Panel
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => router.push('/dashboard')}
+                        className="dashboard-button-effect"
+                        style={{
+                          color: '#fbbf24',
+                          border: '1px solid rgba(4, 120, 87, 0.3)',
+                          padding: '0.5rem 1.5rem',
+                          borderRadius: '0.5rem',
+                          background: 'linear-gradient(135deg, #047857, #0891b2)',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          fontSize: '0.875rem',
+                          fontWeight: 'bold'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#fbbf24';
+                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                          e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                          e.currentTarget.style.boxShadow = 'none';
+                          e.currentTarget.style.textShadow = 'none';
+                        }}
+                      >
+                        📊 Dashboard
+                      </button>
                     <button
                       onClick={logout}
                       className="logout-button-effect"
                       style={{
                         color: 'white',
                         border: '1px solid rgba(244, 114, 182, 0.3)',
-                        padding: '0.5rem 1.5rem',
+                        padding: 'clamp(0.375rem, 1.5vw, 0.5rem) clamp(0.75rem, 3vw, 1.5rem)',
                         borderRadius: '0.5rem',
                         background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
-                        cursor: 'pointer',
+                          cursor: 'pointer',
+                          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
+                          fontWeight: 'bold',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#ffffff';
+                          e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 8px 25px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)';
+                          e.currentTarget.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(244, 114, 182, 0.3)';
+                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                          e.currentTarget.style.boxShadow = 'none';
+                          e.currentTarget.style.textShadow = 'none';
+                        }}
+                      >
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <a className="login-button-effect"
+                      href="/login"
+                      style={{
+                        color: 'white',
+                        border: '1px solid rgba(244, 114, 182, 0.3)',
+                        padding: 'clamp(0.375rem, 1.5vw, 0.5rem) clamp(0.75rem, 3vw, 1.5rem)',
+                        borderRadius: '0.5rem',
+                        textDecoration: 'none',
+                        background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
                         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                         position: 'relative',
-                        overflow: 'hidden'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#ffffff';
-                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)';
-                        e.currentTarget.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+                        overflow: 'hidden',
+                        fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        flex: '1',
+                        minWidth: 'fit-content',
+                        textAlign: 'center'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = 'rgba(244, 114, 182, 0.3)';
@@ -626,50 +707,26 @@ const Home: NextPage = () => {
                         e.currentTarget.style.textShadow = 'none';
                       }}
                     >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <a className="login-button-effect"
-                    href="/login"
-                    style={{
-                      color: 'white',
-                      border: '1px solid rgba(244, 114, 182, 0.3)',
-                      padding: '0.5rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      textDecoration: 'none',
-                      background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
-                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#ffffff';
-                      e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)';
-                      e.currentTarget.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(244, 114, 182, 0.3)';
-                      e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                      e.currentTarget.style.boxShadow = 'none';
-                      e.currentTarget.style.textShadow = 'none';
-                    }}
-                  >
-                    <span style={{position: 'relative', zIndex: 1}}>Login</span>
-                  </a>
-                )}
-              </nav>
+                      <span style={{position: 'relative', zIndex: 1}}>Login</span>
+                    </a>
+                  )}
+                </nav>
+              </div>
+
+              {/* Mobile Menu */}
+              <div className="mobile-menu" style={{display: isMobile ? 'block' : 'none'}}>
+                <MobileMenu currentTime={currentTime} user={user} logout={logout} currentPage="home" />
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Main Content */}
       <main style={{
         maxWidth: '80rem',
         margin: '0 auto',
-        padding: '5rem 1rem',
+        padding: 'clamp(2rem, 8vw, 5rem) clamp(1rem, 3vw, 1rem)',
         position: 'relative',
         zIndex: 5
       }}>
@@ -679,13 +736,13 @@ const Home: NextPage = () => {
           transform: isLoaded ? 'translateY(0)' : 'translateY(30px)',
           transition: 'all 0.8s ease-out'
         }}>
-          <div style={{marginBottom: '2rem'}}>
+          <div style={{marginBottom: 'clamp(1rem, 3vw, 2rem)'}}>
             <div style={{
-              width: '25rem',
-              height: '25rem',
+              width: 'clamp(12rem, 30vw, 25rem)',
+              height: 'clamp(12rem, 30vw, 25rem)',
               background: 'linear-gradient(to bottom right, #7c3aed, #3730a3)',
               borderRadius: '50%',
-              marginBottom: '1.5rem',
+              marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
               boxShadow: '0 80px 150px -12px rgba(0, 0, 0, 0.3)',
               transition: 'all 0.5s ease',
               animation: 'pulse 3s ease-in-out infinite',
@@ -728,13 +785,14 @@ const Home: NextPage = () => {
             </span>
           </h1>
           <p style={{
-            fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+            fontSize: 'clamp(0.875rem, 2.5vw, 1.25rem)',
             color: '#c4b5fd',
-            marginBottom: '3rem',
+            marginBottom: 'clamp(2rem, 6vw, 3rem)',
             maxWidth: '48rem',
-            margin: '0 auto 3rem',
+            margin: '0 auto clamp(2rem, 6vw, 3rem)',
             lineHeight: 1.6,
-            opacity: 0.9
+            opacity: 0.9,
+            padding: '0 1rem'
           }}>
             Your internal platform for discovering, sharing, and collaborating on AI tools,
             libraries, and applications across the SoftArt AI HUB team.
@@ -746,8 +804,8 @@ const Home: NextPage = () => {
       <footer style={{
         background: '#111827',
         color: 'white',
-        marginTop: '5rem',
-        padding: '3rem 0',
+        marginTop: 'clamp(3rem, 8vw, 5rem)',
+        padding: 'clamp(2rem, 6vw, 3rem) 0',
         position: 'relative',
         overflow: 'hidden'
       }}>
@@ -762,7 +820,7 @@ const Home: NextPage = () => {
         <div style={{
           maxWidth: '80rem',
           margin: '0 auto',
-          padding: '0 1rem',
+          padding: '0 clamp(1rem, 3vw, 1rem)',
           textAlign: 'center',
           position: 'relative',
           zIndex: 1,
@@ -771,22 +829,22 @@ const Home: NextPage = () => {
           transition: 'all 0.8s ease-out 0.5s'
         }}>
           <h2 style={{
-            fontSize: '1.5rem',
+            fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
             fontWeight: 'bold',
             color: '#fbbf24',
-            margin: '0 0 1rem 0'
+            margin: '0 0 clamp(0.75rem, 2vw, 1rem) 0'
           }}>
             SoftArt AI HUB
           </h2>
           <p style={{
             color: '#9ca3af',
-            marginBottom: '1rem',
-            fontSize: '1rem'
+            marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
+            fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
           }}>
             Empowering teams with AI tools and collaboration
           </p>
           <p style={{
-            fontSize: '0.875rem',
+            fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
             color: '#6b7280',
             fontWeight: '300'
           }}>

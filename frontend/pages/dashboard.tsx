@@ -9,6 +9,7 @@ import Toast from '../components/Toast';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BreezeAuth from '../components/BreezeAuth';
+import MobileMenu from '../components/MobileMenu';
 import { useAuth } from '../hooks/useAuth';
 import { checkAddToolParam, clearAddToolParam } from '../utils/addTool';
 
@@ -26,8 +27,26 @@ const Dashboard: NextPage = () => {
   const [resetPagination, setResetPagination] = useState(false);
   const [allTools, setAllTools] = useState<any[]>([]);
   const [loadingTools, setLoadingTools] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [userState, setUserState] = useState<any>(null);
   const router = useRouter();
   const { user, loading, logout, getRoleName } = useAuth();
+
+  // Listen for avatar updates
+  useEffect(() => {
+    const handleAvatarUpdate = (event: CustomEvent) => {
+      setUserState(event.detail);
+    };
+
+    window.addEventListener('userAvatarUpdated', handleAvatarUpdate as EventListener);
+    return () => {
+      window.removeEventListener('userAvatarUpdated', handleAvatarUpdate as EventListener);
+    };
+  }, []);
+
+  // Use updated user state when available
+  const currentUser = userState || user;
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
@@ -83,18 +102,50 @@ const Dashboard: NextPage = () => {
       }
       
       const data = await response.json();
+                      
+                      if (!response.ok) {
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                      }
       const tools = data.data || data;
       
-      // Filter tools based on user role
+      // Debug: Log the raw response and parsed tools
+      console.log('Raw API response:', data);
+      console.log('Parsed tools:', tools);
+      console.log('Tools length:', tools.length);
+      
+      // Filter tools based on user role and approval status
       let filteredTools = tools;
+      
+      // First filter by is_approved status
+      const approvedTools = tools.filter((tool: any) => {
+        const isApproved = tool.is_approved === true || tool.is_approved === 1;
+        console.log(`Tool "${tool.name}": is_approved=${tool.is_approved}, isApproved=${isApproved}`);
+        return isApproved;
+      });
+      filteredTools = approvedTools;
+      
+      // Debug: Log the user role and available tools
+      console.log('User role:', userRoleName);
+      console.log('Filtered tools count:', filteredTools.length);
+      console.log('Sample tool roles:', filteredTools[0]?.roles);
       
       if (user.role && userRoleName !== 'user') {
         const userRoleNameLower = userRoleName.toLowerCase().trim();
         
-        // Owner and Project Manager see all tools
+        // Debug: Log role filtering decision
+        console.log('Role filtering check:', {
+          userRoleName,
+          userRoleNameLower,
+          isOwner: userRoleNameLower === 'owner',
+          isProjectManager: userRoleNameLower === 'project manager',
+          shouldSeeAllTools: userRoleNameLower === 'owner' || userRoleNameLower === 'project manager'
+        });
+        
+        // Owner and Project Manager see all approved tools
         if (userRoleNameLower !== 'owner' && userRoleNameLower !== 'project manager') {
-          // Other users see only tools that match their role
-          filteredTools = tools.filter((tool: any) => {
+          console.log('Applying role-based filtering for:', userRoleNameLower);
+          // Other users see only approved tools that match their role
+          filteredTools = filteredTools.filter((tool: any) => {
             if (!tool.roles || !Array.isArray(tool.roles)) {
               return false;
             }
@@ -106,6 +157,8 @@ const Dashboard: NextPage = () => {
             
             return matches;
           });
+        } else {
+          console.log('Showing all approved tools for:', userRoleNameLower);
         }
       }
       
@@ -157,25 +210,81 @@ const Dashboard: NextPage = () => {
 
   const handleSaveTool = async (tool: any) => {
     try {
+      const token = localStorage.getItem('auth_token');
+      
       const url = tool.id 
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/tools/${tool.id}`
         : `${process.env.NEXT_PUBLIC_API_URL}/api/tools`;
       
       const method = tool.id ? 'PUT' : 'POST';
       
+      const headers: any = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      };
+      
+      // Add Authorization header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers,
         credentials: 'omit',
         body: JSON.stringify(tool),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const responseText = await response.text();
+        let responseData;
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (e) {
+          console.error('Failed to parse response as JSON:', e);
+          responseData = { rawResponse: responseText };
+        }
+        
+        console.log('Response status:', response.status);
+        console.log('Response text:', responseText);
+        console.log('Response data:', responseData);
+        
+        // Handle validation errors specifically
+        if (response.status === 400) {
+          let errorMessage = 'Validation errors occurred';
+          
+          if (responseData.errors) {
+            // Laravel validation errors come as an object with field names as keys
+            const validationErrors = [];
+            for (const [field, messages] of Object.entries(responseData.errors)) {
+              if (Array.isArray(messages)) {
+                validationErrors.push(...messages);
+              } else {
+                validationErrors.push(messages);
+              }
+            }
+            errorMessage = validationErrors.join('\n\n');
+          } else if (responseData.message) {
+            errorMessage = responseData.message;
+          } else if (responseData.error) {
+            errorMessage = responseData.error;
+          } else if (responseText) {
+            errorMessage = responseText;
+          }
+          
+          console.log('Final error message to display:', errorMessage);
+          
+          // Show error toast but don't close modal
+          setToast({
+            message: errorMessage,
+            type: 'error'
+          });
+          
+          // Return early to prevent modal from closing
+          return;
+        }
+        
         throw new Error(`Failed to ${tool.id ? 'update' : 'create'} tool: ${response.status} ${response.statusText}`);
       }
 
@@ -262,6 +371,20 @@ const Dashboard: NextPage = () => {
     // Update time every second
     const interval = setInterval(updateTime, 1000);
 
+    // Check screen width for mobile detection
+    const checkScreenWidth = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+    
+    // Initial check
+    checkScreenWidth();
+    
+    // Add resize listener
+    const resizeListener = () => {
+      checkScreenWidth();
+    };
+    window.addEventListener('resize', resizeListener);
+
     // Trigger page load animation
     const timeout = setTimeout(() => setIsLoaded(true), 200);
 
@@ -279,6 +402,7 @@ const Dashboard: NextPage = () => {
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
+      window.removeEventListener('resize', resizeListener);
     };
   }, [updateTime, handleAddNewTool]);
 
@@ -631,6 +755,34 @@ const Dashboard: NextPage = () => {
               opacity: 1;
             }
           }
+        
+        /* Responsive navigation */
+        @media (max-width: 1200px) {
+          .desktop-nav {
+            gap: clamp(0.25rem, 1.5vw, 0.75rem) !important;
+          }
+          .desktop-nav nav {
+            gap: clamp(0.25rem, 1.5vw, 0.75rem) !important;
+          }
+        }
+        
+        @media (max-width: 900px) {
+          .desktop-nav {
+            gap: clamp(0.25rem, 1vw, 0.5rem) !important;
+          }
+          .desktop-nav nav {
+            gap: clamp(0.25rem, 1vw, 0.5rem) !important;
+          }
+        }
+        
+        @media (max-width: 768px) {
+          .desktop-nav {
+            gap: 0.25rem !important;
+          }
+          .desktop-nav nav {
+            gap: 0.25rem !important;
+          }
+        }
         `}</style>
       </Head>
 
@@ -639,22 +791,22 @@ const Dashboard: NextPage = () => {
         background: 'rgba(0,0,0,0.2)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
-        padding: '1rem',
+        padding: 'clamp(0.75rem, 2vw, 1rem)',
         position: 'relative',
         zIndex: 10,
         transition: 'all 0.3s ease',
         opacity: isLoaded ? 1 : 0,
         transform: isLoaded ? 'translateY(0)' : 'translateY(-20px)'
       }}>
-        <div style={{maxWidth: '80rem', margin: '0 auto', padding: '0 1rem'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+        <div style={{maxWidth: '80rem', margin: '0 auto', padding: '0 clamp(0.5rem, 2vw, 1rem)'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', flex: '1', minWidth: 'fit-content'}}>
               <a href="/" style={{textDecoration: 'none'}}>
                 <div className="header-logo-effect" style={{
-                  width: '5rem',
-                  height: '5rem',
+                  width: 'clamp(3rem, 8vw, 5rem)',
+                  height: 'clamp(3rem, 8vw, 5rem)',
                   background: 'linear-gradient(to bottom right, #7c3aed, #3730a3)',
-                  borderRadius: '1rem',
+                  borderRadius: 'clamp(0.5rem, 2vw, 1rem)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -687,122 +839,147 @@ const Dashboard: NextPage = () => {
                   />
                 </div>
               </a>
-              <div>
-                <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'white'}}>SoftArt AI HUB</h1>
-                <p style={{color: '#fbbf24', fontSize: '0.875rem'}}>AI Tools Platform</p>
+              <div style={{flex: '1', minWidth: 'fit-content'}}>
+                <h1 style={{fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', fontWeight: 'bold', color: 'white', lineHeight: 1.2}}>SoftArt AI HUB</h1>
+                <p style={{color: '#fbbf24', fontSize: 'clamp(0.75rem, 2vw, 0.875rem)'}}>AI Tools Platform</p>
               </div>
             </div>
-            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <div style={{
-                color: '#fbbf24',
-                fontSize: '0.875rem',
-                background: 'rgba(0,0,0,0.3)',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '0.5rem'
-              }}>
-                {currentTime || 'Loading...'}
-              </div>
-              <div style={{
-                color: '#fbbf24',
-                fontSize: '0.875rem',
-                background: 'rgba(0,0,0,0.3)',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '0.5rem'
-              }}>
-                User ID: {user?.id || 'Loading...'}
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <button
-                  onClick={() => window.location.href = '/tools'}
-                  className="tools-button-effect"
-                  style={{
+            <div style={{display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '1', minWidth: 'fit-content'}}>
+              {/* Desktop Navigation */}
+              <div className="desktop-nav" style={{display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                <nav style={{display: 'flex', gap: 'clamp(0.5rem, 2vw, 1rem)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                  <div style={{
                     color: '#fbbf24',
-                    border: '1px solid rgba(4, 120, 87, 0.3)',
-                    padding: '0.5rem 1.5rem',
+                    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: 'clamp(0.25rem, 1vw, 0.5rem) clamp(0.5rem, 2vw, 0.75rem)',
                     borderRadius: '0.5rem',
-                    background: 'linear-gradient(135deg, #047857, #0891b2)',
-                    cursor: 'pointer',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    fontSize: '0.875rem',
-                    fontWeight: 'bold'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#fbbf24';
-                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
-                    e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
-                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.textShadow = 'none';
-                  }}
-                >
-                  🧰 AI Tools
-                </button>
-                <button
-                  onClick={handleAddNewTool}
-                  className="add-tool-button-effect"
-                  style={{
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {currentTime || 'Loading...'}
+                  </div>
+                  <div style={{
                     color: '#fbbf24',
-                    border: '1px solid rgba(4, 120, 87, 0.3)',
-                    padding: '0.5rem 1.5rem',
+                    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: 'clamp(0.25rem, 1vw, 0.5rem) clamp(0.5rem, 2vw, 0.75rem)',
                     borderRadius: '0.5rem',
-                    background: 'linear-gradient(135deg, #047857, #0891b2)',
-                    cursor: 'pointer',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    fontSize: '0.875rem',
-                    fontWeight: 'bold'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#fbbf24';
-                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
-                    e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
-                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.textShadow = 'none';
-                  }}
-                >
-                  🛠️ Add Tool
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="logout-button-effect"
-                  style={{
-                    color: 'white',
-                    border: '1px solid rgba(244, 114, 182, 0.3)',
-                    padding: '0.5rem 1.5rem',
-                    borderRadius: '0.5rem',
-                    background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
-                    cursor: 'pointer',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#ffffff';
-                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)';
-                    e.currentTarget.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(244, 114, 182, 0.3)';
-                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.textShadow = 'none';
-                  }}
-                >
-                  Logout
-                </button>
+                    whiteSpace: 'nowrap'
+                  }}>
+                    User ID: {user?.id || 'Loading...'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 'clamp(0.5rem, 2vw, 1rem)', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Admin Panel Button - Only for Owner */}
+                    {currentUser?.role === 'owner' && (
+                      <button
+                        onClick={() => window.location.href = '/adminPanel'}
+                        className="dashboard-button-effect"
+                        style={{
+                          color: '#fbbf24',
+                          border: '1px solid rgba(4, 120, 87, 0.3)',
+                          padding: '0.5rem 1.5rem',
+                          borderRadius: '0.5rem',
+                          background: 'linear-gradient(135deg, #047857, #0891b2)',
+                          fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#fbbf24';
+                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                          e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                          e.currentTarget.style.boxShadow = 'none';
+                          e.currentTarget.style.textShadow = 'none';
+                        }}
+                      >
+                        ⚙️ Admin Panel
+                      </button>
+                    )}
+                    <button
+                      onClick={handleAddNewTool}
+                      className="add-tool-button-effect"
+                      style={{
+                        color: '#fbbf24',
+                        border: '1px solid rgba(4, 120, 87, 0.3)',
+                        padding: '0.5rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        background: 'linear-gradient(135deg, #047857, #0891b2)',
+                        cursor: 'pointer',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        fontSize: '0.875rem',
+                        fontWeight: 'bold'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#fbbf24';
+                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                        e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.textShadow = 'none';
+                      }}
+                    >
+                      🛠️ Add Tool
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="logout-button-effect"
+                      style={{
+                        color: 'white',
+                        border: '1px solid rgba(244, 114, 182, 0.3)',
+                        padding: 'clamp(0.375rem, 1.5vw, 0.5rem) clamp(0.75rem, 3vw, 1.5rem)',
+                        borderRadius: '0.5rem',
+                        background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
+                        cursor: 'pointer',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#ffffff';
+                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)';
+                        e.currentTarget.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(244, 114, 182, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.textShadow = 'none';
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </nav>
+              </div>
+
+              {/* Mobile Menu */}
+              <div className="mobile-menu" style={{display: isMobile ? 'block' : 'none'}}>
+                <MobileMenu currentTime={currentTime} user={user} logout={async () => {
+                  try {
+                    await logout();
+                    window.location.href = '/login';
+                  } catch (error) {
+                    console.error('Logout failed:', error);
+                    window.location.href = '/login';
+                  }
+                }} />
               </div>
             </div>
           </div>
@@ -813,7 +990,7 @@ const Dashboard: NextPage = () => {
       <main style={{
         maxWidth: '80rem',
         margin: '0 auto',
-        padding: '5rem 1rem',
+        padding: 'clamp(2rem, 8vw, 5rem) clamp(1rem, 3vw, 1rem)',
         position: 'relative',
         zIndex: 5
       }}>
@@ -829,44 +1006,96 @@ const Dashboard: NextPage = () => {
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(244, 114, 182, 0.2)',
             borderRadius: '1rem',
-            padding: '3rem',
-            marginBottom: '3rem',
+            padding: 'clamp(2rem, 6vw, 3rem)',
+            marginBottom: 'clamp(2rem, 6vw, 3rem)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             animation: 'formGlow 3s ease-in-out infinite'
           }}>
             <h1 style={{
-              fontSize: '3rem',
+              fontSize: 'clamp(2rem, 6vw, 3rem)',
               fontWeight: 'bold',
               color: 'white',
-              marginBottom: '1rem'
+              marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
+              lineHeight: 1.2
             }}>
               Welcome, {user?.name || 'Guest'}!
             </h1>
             <p style={{
               color: '#fbbf24',
-              fontSize: '1.5rem',
-              marginBottom: '2rem'
+              fontSize: 'clamp(1.125rem, 3.5vw, 1.5rem)',
+              marginBottom: 'clamp(1.5rem, 4vw, 2rem)',
+              lineHeight: 1.3
             }}>
               Your role is {getUserRoleName(user)}!
             </p>
-            <div style={{
-              width: '6rem',
-              height: '6rem',
-              background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 2rem auto',
-              boxShadow: '0 10px 30px rgba(251, 191, 36, 0.3)'
-            }}>
-              <span style={{
-                color: 'white',
-                fontSize: '2rem',
-                fontWeight: 'bold'
+            <div 
+              onClick={() => setShowAvatarModal(true)}
+              style={{
+                width: 'clamp(8rem, 20vw, 12rem)',
+                height: 'clamp(8rem, 20vw, 12rem)',
+                background: user?.avatar 
+                  ? `linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(124, 58, 237, 0.3))` 
+                  : 'linear-gradient(135deg, #fbbf24, #7c3aed)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto clamp(1.5rem, 4vw, 2rem) auto',
+                boxShadow: '0 10px 30px rgba(251, 191, 36, 0.3)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 15px 40px rgba(251, 191, 36, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(251, 191, 36, 0.3)';
+              }}
+            >
+              {currentUser?.avatar && (
+                <img
+                  src={`http://localhost:8000/storage/avatars/${currentUser.avatar}`}
+                  alt="User Avatar"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    borderRadius: '50%',
+                    mixBlendMode: 'overlay'
+                  }}
+                />
+              )}
+              {!currentUser?.avatar && (
+                <span style={{
+                  color: 'white',
+                  fontSize: 'clamp(1.5rem, 4vw, 2rem)',
+                  fontWeight: 'bold'
+                }}>
+                  {currentUser?.name?.charAt(0)?.toUpperCase() || 'G'}
+                </span>
+              )}
+              <div style={{
+                position: 'absolute',
+                bottom: '5px',
+                right: '5px',
+                background: 'white',
+                color: '#7c3aed',
+                borderRadius: '50%',
+                width: 'clamp(1rem, 3vw, 1.5rem)',
+                height: 'clamp(1rem, 3vw, 1.5rem)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 'clamp(0.75rem, 2vw, 1rem)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
               }}>
-                                {user?.name?.charAt(0)?.toUpperCase() || 'G'}
-              </span>
+                📷
+              </div>
             </div>
           </div>
 
@@ -1065,6 +1294,315 @@ const Dashboard: NextPage = () => {
                 enablePagination={true}
               />
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Avatar Upload Modal */}
+      {showAvatarModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(139, 92, 246, 0.2)',
+            borderRadius: '1rem',
+            padding: '2rem',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1.5rem'
+            }}>
+              <h2 style={{
+                color: 'white',
+                fontSize: '1.5rem',
+                fontWeight: 'bold'
+              }}>
+                Upload Avatar
+              </h2>
+              <button
+                onClick={() => setShowAvatarModal(false)}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  color: '#ef4444',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '1rem'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div 
+              style={{
+                border: '2px dashed rgba(139, 92, 246, 0.5)',
+                borderRadius: '0.5rem',
+                padding: '2rem',
+                textAlign: 'center',
+                marginBottom: '1.5rem',
+                background: 'rgba(139, 92, 246, 0.1)',
+                position: 'relative'
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.8)';
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+              }}
+              onDrop={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+                
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                  const file = files[0];
+                  if (file.type.startsWith('image/')) {
+                    try {
+                      // Create FormData for file upload
+                      const formData = new FormData();
+                      formData.append('avatar', file);
+                      
+                      // Use axios with proper authentication
+                      const token = localStorage.getItem('auth_token');
+                      console.log('Avatar upload - token:', token);
+                      console.log('Avatar upload - file:', file);
+                      
+                      const response = await fetch('http://localhost:8000/api/user/avatar', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                          'Accept': 'application/json',
+                          'Authorization': `Bearer ${token}`,
+                        },
+                      });
+                      
+                      console.log('Avatar upload - response status:', response.status);
+                      console.log('Avatar upload - response headers:', response.headers);
+                      
+                      const responseText = await response.text();
+                      console.log('Avatar upload - raw response:', responseText);
+                      
+                      let data;
+                      try {
+                        data = JSON.parse(responseText);
+                      } catch (e) {
+                        console.error('Avatar upload - JSON parse error:', e);
+                        console.error('Avatar upload - Response that failed to parse:', responseText);
+                        throw new Error('Invalid JSON response from server');
+                      }
+                      
+                      if (!response.ok) {
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                      }
+                      
+                      if (data.success) {
+                        setToast({
+                          message: 'Avatar uploaded successfully!',
+                          type: 'success'
+                        });
+                        // Update user state to reflect new avatar
+                        if (currentUser && data.avatar) {
+                          // Create a new user object with updated avatar
+                          const updatedUser = { ...currentUser, avatar: data.avatar };
+                          // Force a re-render by updating the user object
+                          // This will trigger the avatar to update without page reload
+                          const userEvent = new CustomEvent('userAvatarUpdated', { detail: updatedUser });
+                          window.dispatchEvent(userEvent);
+                        }
+                      } else {
+                        setToast({
+                          message: data.error || 'Failed to upload avatar',
+                          type: 'error'
+                        });
+                      }
+                    } catch (error: any) {
+                      console.error('Avatar upload error:', error);
+                      setToast({
+                        message: error.message || 'Failed to upload avatar',
+                        type: 'error'
+                      });
+                    } finally {
+                      setShowAvatarModal(false);
+                    }
+                  } else {
+                    setToast({
+                      message: 'Please upload an image file',
+                      type: 'error'
+                    });
+                  }
+                }
+              }}
+            >
+              <div style={{
+                fontSize: '3rem',
+                marginBottom: '1rem'
+              }}>
+                📷
+              </div>
+              <p style={{
+                color: '#e5e7eb',
+                fontSize: '1rem',
+                marginBottom: '1rem'
+              }}>
+                Click to upload or drag and drop
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    try {
+                      // Create FormData for file upload
+                      const formData = new FormData();
+                      formData.append('avatar', file);
+                      
+                      // Use axios with proper authentication
+                      const token = localStorage.getItem('auth_token');
+                      console.log('Avatar upload - token:', token);
+                      console.log('Avatar upload - file:', file);
+                      
+                      const response = await fetch('http://localhost:8000/api/user/avatar', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                          'Accept': 'application/json',
+                          'Authorization': `Bearer ${token}`,
+                        },
+                      });
+                      
+                      console.log('Avatar upload - response status:', response.status);
+                      console.log('Avatar upload - response headers:', response.headers);
+                      
+                      const responseText = await response.text();
+                      console.log('Avatar upload - raw response:', responseText);
+                      
+                      let data;
+                      try {
+                        data = JSON.parse(responseText);
+                      } catch (e) {
+                        console.error('Avatar upload - JSON parse error:', e);
+                        console.error('Avatar upload - Response that failed to parse:', responseText);
+                        throw new Error('Invalid JSON response from server');
+                      }
+                      
+                      if (!response.ok) {
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                      }
+                      
+                      if (data.success) {
+                        setToast({
+                          message: 'Avatar uploaded successfully!',
+                          type: 'success'
+                        });
+                        // Update user state to reflect new avatar
+                        if (currentUser && data.avatar) {
+                          // Create a new user object with updated avatar
+                          const updatedUser = { ...currentUser, avatar: data.avatar };
+                          // Force a re-render by updating the user object
+                          // This will trigger the avatar to update without page reload
+                          const userEvent = new CustomEvent('userAvatarUpdated', { detail: updatedUser });
+                          window.dispatchEvent(userEvent);
+                        }
+                      } else {
+                        setToast({
+                          message: data.error || 'Failed to upload avatar',
+                          type: 'error'
+                        });
+                      }
+                    } catch (error: any) {
+                      console.error('Avatar upload error:', error);
+                      setToast({
+                        message: error.message || 'Failed to upload avatar',
+                        type: 'error'
+                      });
+                    } finally {
+                      setShowAvatarModal(false);
+                    }
+                  }
+                }}
+                style={{
+                  display: 'none'
+                }}
+                id="avatar-upload"
+              />
+              <label
+                htmlFor="avatar-upload"
+                style={{
+                  background: 'linear-gradient(135deg, #7c3aed, #3730a3)',
+                  color: 'white',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  display: 'inline-block',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(124, 58, 237, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Choose File
+              </label>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '1rem',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowAvatarModal(false)}
+                style={{
+                  background: 'rgba(107, 114, 128, 0.2)',
+                  color: '#9ca3af',
+                  border: '1px solid rgba(107, 114, 128, 0.3)',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 'bold'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

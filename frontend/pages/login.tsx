@@ -2,6 +2,7 @@ import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import MobileMenu from '../components/MobileMenu';
 import { useAuth } from '../hooks/useAuth';
 
 const Login: NextPage = () => {
@@ -11,6 +12,7 @@ const Login: NextPage = () => {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const { user, loading, login } = useAuth();
 
@@ -51,9 +53,21 @@ const Login: NextPage = () => {
     // Trigger page load animation
     const timeout = setTimeout(() => setIsLoaded(true), 200);
 
+    // Check screen width and update mobile state
+    const checkScreenWidth = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+
+    // Initial check
+    checkScreenWidth();
+
+    // Add resize listener
+    window.addEventListener('resize', checkScreenWidth);
+
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
+      window.removeEventListener('resize', checkScreenWidth);
     };
   }, [updateTime]);
 
@@ -442,22 +456,22 @@ const Login: NextPage = () => {
         background: 'rgba(0,0,0,0.2)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
-        padding: '1rem',
+        padding: 'clamp(0.75rem, 2vw, 1rem)',
         position: 'relative',
         zIndex: 10,
         transition: 'all 0.3s ease',
         opacity: isLoaded ? 1 : 0,
         transform: isLoaded ? 'translateY(0)' : 'translateY(-20px)'
       }}>
-        <div style={{maxWidth: '80rem', margin: '0 auto', padding: '0 1rem'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+        <div style={{maxWidth: '80rem', margin: '0 auto', padding: '0 clamp(0.5rem, 2vw, 1rem)'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', flex: '1', minWidth: 'fit-content'}}>
               <a href="/" style={{textDecoration: 'none'}}>
                 <div className="header-logo-effect" style={{
-                  width: '5rem',
-                  height: '5rem',
+                  width: 'clamp(3rem, 8vw, 5rem)',
+                  height: 'clamp(3rem, 8vw, 5rem)',
                   background: 'linear-gradient(to bottom right, #7c3aed, #3730a3)',
-                  borderRadius: '1rem',
+                  borderRadius: 'clamp(0.5rem, 2vw, 1rem)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -490,20 +504,62 @@ const Login: NextPage = () => {
                   />
                 </div>
               </a>
-              <div>
-                <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'white'}}>SoftArt AI HUB</h1>
-                <p style={{color: '#fbbf24', fontSize: '0.875rem'}}>AI Tools Platform</p>
+              <div style={{flex: '1', minWidth: 'fit-content'}}>
+                <h1 style={{fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', fontWeight: 'bold', color: 'white', lineHeight: 1.2}}>SoftArt AI HUB</h1>
+                <p style={{color: '#fbbf24', fontSize: 'clamp(0.75rem, 2vw, 0.875rem)'}}>AI Tools Platform</p>
               </div>
             </div>
-            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <div style={{
-                color: '#fbbf24',
-                fontSize: '0.875rem',
-                background: 'rgba(0,0,0,0.3)',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '0.5rem'
-              }}>
-                {currentTime || 'Loading...'}
+            <div style={{display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', justifyContent: 'flex-end', flex: '1', minWidth: 'fit-content'}}>
+              {/* Desktop Navigation */}
+              <div className="desktop-nav" style={{display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                <nav style={{display: 'flex', gap: 'clamp(0.5rem, 2vw, 1rem)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                  <div style={{
+                    color: '#fbbf24',
+                    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: 'clamp(0.25rem, 1vw, 0.5rem) clamp(0.5rem, 2vw, 0.75rem)',
+                    borderRadius: '0.5rem',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {currentTime || 'Loading...'}
+                  </div>
+                  <a 
+                    href="/"
+                    style={{
+                      color: '#fbbf24',
+                      border: '1px solid rgba(4, 120, 87, 0.3)',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.375rem',
+                      textDecoration: 'none',
+                      background: 'linear-gradient(135deg, #047857, #0891b2)',
+                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#fbbf24';
+                      e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2)';
+                      e.currentTarget.style.textShadow = '0 0 10px rgba(251, 191, 36, 0.5)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(4, 120, 87, 0.3)';
+                      e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.textShadow = 'none';
+                    }}
+                  >
+                    🏠 Home
+                  </a>
+                </nav>
+              </div>
+
+              {/* Mobile Menu */}
+              <div className="mobile-menu" style={{display: isMobile ? 'block' : 'none'}}>
+                <MobileMenu currentTime={currentTime} user={null} logout={() => {}} currentPage="login" />
               </div>
             </div>
           </div>
@@ -514,7 +570,7 @@ const Login: NextPage = () => {
       <main style={{
         maxWidth: '80rem',
         margin: '0 auto',
-        padding: '5rem 1rem',
+        padding: 'clamp(2rem, 8vw, 5rem) clamp(1rem, 3vw, 1rem)',
         position: 'relative',
         zIndex: 5,
         display: 'flex',
@@ -524,24 +580,26 @@ const Login: NextPage = () => {
       }}>
         <div style={{
           width: '100%',
-          maxWidth: '28rem',
+          maxWidth: 'clamp(20rem, 50vw, 28rem)',
           opacity: isLoaded ? 1 : 0,
           transform: isLoaded ? 'translateY(0)' : 'translateY(30px)',
           transition: 'all 0.8s ease-out'
         }}>
         {/* Header */}
-        <div style={{textAlign: 'center', marginBottom: '2rem'}}>
+        <div style={{textAlign: 'center', marginBottom: 'clamp(1.5rem, 4vw, 2rem)'}}>
           <h1 style={{
-            fontSize: '2.25rem',
+            fontSize: 'clamp(1.75rem, 5vw, 2.25rem)',
             fontWeight: 'bold',
             color: 'white',
-            marginBottom: '0.5rem'
+            marginBottom: 'clamp(0.5rem, 1.5vw, 0.5rem)',
+            lineHeight: 1.2
           }}>
             Welcome Back
           </h1>
           <p style={{
             color: '#fbbf24',
-            fontSize: '1.125rem'
+            fontSize: 'clamp(1rem, 3vw, 1.125rem)',
+            marginBottom: 0
           }}>
             Sign in to your SoftArt AI HUB account
           </p>
@@ -553,17 +611,17 @@ const Login: NextPage = () => {
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(244, 114, 182, 0.2)',
           borderRadius: '1rem',
-          padding: '2.5rem',
+          padding: 'clamp(1.5rem, 5vw, 2.5rem)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
         }}>
           <form onSubmit={handleSubmit} style={{width: '100%', boxSizing: 'border-box'}}>
-            <div style={{marginBottom: '1.5rem', width: '100%', boxSizing: 'border-box'}}>
+            <div style={{marginBottom: 'clamp(1rem, 3vw, 1.5rem)', width: '100%', boxSizing: 'border-box'}}>
               <label style={{
                 display: 'block',
                 color: '#e5e7eb',
-                fontSize: '0.875rem',
+                fontSize: 'clamp(0.8rem, 2.5vw, 0.875rem)',
                 fontWeight: '500',
-                marginBottom: '0.5rem'
+                marginBottom: 'clamp(0.375rem, 1vw, 0.5rem)'
               }}>
                 Email Address
               </label>
@@ -574,12 +632,12 @@ const Login: NextPage = () => {
                 className="input-focus"
                 style={{
                   width: '100%',
-                  padding: '14px 24px',
+                  padding: 'clamp(12px, 3vw, 14px) clamp(16px, 4vw, 24px)',
                   background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(244, 114, 182, 0.3)',
                   borderRadius: '0.5rem',
                   color: 'white',
-                  fontSize: '1rem',
+                  fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
                   outline: 'none',
                   boxSizing: 'border-box',
                   margin: 0,
@@ -592,13 +650,13 @@ const Login: NextPage = () => {
               />
             </div>
 
-            <div style={{marginBottom: '1.5rem', width: '100%', boxSizing: 'border-box'}}>
+            <div style={{marginBottom: 'clamp(1rem, 3vw, 1.5rem)', width: '100%', boxSizing: 'border-box'}}>
               <label style={{
                 display: 'block',
                 color: '#e5e7eb',
-                fontSize: '0.875rem',
+                fontSize: 'clamp(0.8rem, 2.5vw, 0.875rem)',
                 fontWeight: '500',
-                marginBottom: '0.5rem'
+                marginBottom: 'clamp(0.375rem, 1vw, 0.5rem)'
               }}>
                 Password
               </label>
@@ -609,12 +667,12 @@ const Login: NextPage = () => {
                 className="input-focus"
                 style={{
                   width: '100%',
-                  padding: '14px 24px',
+                  padding: 'clamp(12px, 3vw, 14px) clamp(16px, 4vw, 24px)',
                   background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(244, 114, 182, 0.3)',
                   borderRadius: '0.5rem',
                   color: 'white',
-                  fontSize: '1rem',
+                  fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
                   outline: 'none',
                   boxSizing: 'border-box',
                   margin: 0,
@@ -632,8 +690,8 @@ const Login: NextPage = () => {
                 background: 'rgba(239, 68, 68, 0.9)',
                 border: '1px solid rgba(239, 68, 68, 0.5)',
                 borderRadius: '0.5rem',
-                padding: '1rem',
-                marginBottom: '1.5rem',
+                padding: 'clamp(0.75rem, 2vw, 1rem)',
+                marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
                 color: '#ffffff',
                 fontWeight: 'bold',
                 width: '100%',
@@ -641,7 +699,8 @@ const Login: NextPage = () => {
                 marginTop: '0',
                 marginLeft: 0,
                 marginRight: 0,
-                textAlign: 'center'
+                textAlign: 'center',
+                fontSize: 'clamp(0.8rem, 2.5vw, 0.875rem)'
               }}>
                 {error}
               </div>
@@ -653,12 +712,12 @@ const Login: NextPage = () => {
               className="btn-hover"
               style={{
                 width: '100%',
-                padding: '14px 24px',
+                padding: 'clamp(12px, 3vw, 14px) clamp(16px, 4vw, 24px)',
                 background: 'linear-gradient(135deg, #fbbf24, #7c3aed)',
                 border: '1px solid transparent',
                 borderRadius: '0.5rem',
                 color: 'white',
-                fontSize: '1rem',
+                fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
                 fontWeight: '600',
                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
                 opacity: isSubmitting ? 0.7 : 1,
@@ -688,13 +747,13 @@ const Login: NextPage = () => {
             </button>
           </form>
 
-          <div style={{marginTop: '1.5rem', textAlign: 'center'}}>
+          <div style={{marginTop: 'clamp(1rem, 3vw, 1.5rem)', textAlign: 'center'}}>
             <a
               href="/"
               style={{
                 color: '#c4b5fd',
                 textDecoration: 'none',
-                fontSize: '0.875rem',
+                fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
                 transition: 'color 0.3s ease'
               }}
               onMouseEnter={(e) => {
@@ -715,8 +774,8 @@ const Login: NextPage = () => {
       <footer style={{
         background: '#111827',
         color: 'white',
-        marginTop: '5rem',
-        padding: '3rem 0',
+        marginTop: 'clamp(3rem, 8vw, 5rem)',
+        padding: 'clamp(2rem, 6vw, 3rem) 0',
         position: 'relative',
         overflow: 'hidden'
       }}>
@@ -731,7 +790,7 @@ const Login: NextPage = () => {
         <div style={{
           maxWidth: '80rem',
           margin: '0 auto',
-          padding: '0 1rem',
+          padding: '0 clamp(1rem, 3vw, 1rem)',
           textAlign: 'center',
           position: 'relative',
           zIndex: 1,
@@ -740,22 +799,22 @@ const Login: NextPage = () => {
           transition: 'all 0.8s ease-out 0.5s'
         }}>
           <h2 style={{
-            fontSize: '1.5rem',
+            fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
             fontWeight: 'bold',
             color: '#fbbf24',
-            margin: '0 0 1rem 0'
+            margin: '0 0 clamp(0.75rem, 2vw, 1rem) 0'
           }}>
             SoftArt AI HUB
           </h2>
           <p style={{
             color: '#9ca3af',
-            marginBottom: '1rem',
-            fontSize: '1rem'
+            marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
+            fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
           }}>
             Empowering teams with AI tools and collaboration
           </p>
           <p style={{
-            fontSize: '0.875rem',
+            fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
             color: '#6b7280',
             fontWeight: '300'
           }}>

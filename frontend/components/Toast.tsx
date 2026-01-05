@@ -32,7 +32,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, duration = 3000, onClose }
       fontWeight: 'bold',
       fontSize: '0.875rem',
       boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
-      zIndex: 9999,
+      zIndex: 99999,
       transition: 'all 0.3s ease',
       transform: isVisible ? 'translateX(0)' : 'translateX(400px)',
       opacity: isVisible ? 1 : 0,

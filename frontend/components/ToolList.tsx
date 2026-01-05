@@ -289,6 +289,38 @@ const ToolList: React.FC<ToolListProps> = ({ tools: propsTools, onEditTool, onVi
 
   return (
     <>
+      <style>{`
+        .tools-responsive-grid {
+          display: grid;
+          gap: 2.5rem;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        
+        /* Big screens (>1200px): 3 cards per row */
+        @media (min-width: 1200px) {
+          .tools-responsive-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 2.5rem !important;
+          }
+        }
+        
+        /* Medium screens (768px-1199px): 2 cards per row */
+        @media (min-width: 768px) and (max-width: 1199px) {
+          .tools-responsive-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 2rem !important;
+          }
+        }
+        
+        /* Small screens (<768px): 1 card per row */
+        @media (max-width: 767px) {
+          .tools-responsive-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1.5rem !important;
+          }
+        }
+      `}</style>
       <div>
         {/* Tools Grid */}
         <div style={{
@@ -297,9 +329,10 @@ const ToolList: React.FC<ToolListProps> = ({ tools: propsTools, onEditTool, onVi
           border: '1px solid rgba(139, 92, 246, 0.2)',
           borderRadius: '1rem',
           padding: '2rem',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          minHeight: '400px' // Add minimum height to prevent shrinking
         }}>
-          <div style={{ 
+          <div className="tools-responsive-grid" style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(3, minmax(0, 350px))', 
             gap: '2.5rem', 

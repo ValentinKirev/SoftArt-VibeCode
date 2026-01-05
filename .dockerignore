@@ -25,6 +25,8 @@ out
 
 # Laravel/PHP
 /vendor
+/public/storage
+/backend/public/storage
 /storage/app/*
 !/storage/app/.gitkeep
 /storage/framework/cache/*

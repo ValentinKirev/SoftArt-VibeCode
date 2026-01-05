@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\API\AiToolController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
@@ -82,6 +83,103 @@ Route::get('/user', function (Request $request) {
         'email_verified_at' => $user->email_verified_at,
         'created_at' => $user->created_at,
         'updated_at' => $user->updated_at,
+        'avatar' => $user->avatar,
+    ]);
+});
+
+// Avatar upload route (protected)
+Route::post('/user/avatar', function (Request $request) {
+    try {
+        // Debug logging
+        \Log::info('Avatar upload attempt', [
+            'has_file' => $request->hasFile('avatar'),
+            'headers' => $request->headers->all(),
+            'user_authenticated' => auth()->check(),
+            'user_id' => auth()->id(),
+        ]);
+
+        $user = auth()->user();
+        if (!$user) {
+            \Log::warning('Avatar upload: No authenticated user');
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if (!$request->hasFile('avatar')) {
+            return response()->json(['error' => 'No file uploaded'], 400);
+        }
+
+        $file = $request->file('avatar');
+        
+        // Validate file
+        if (!$file->isValid()) {
+            return response()->json(['error' => 'Invalid file'], 400);
+        }
+
+        // Check file type
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($file->getMimeType(), $allowedTypes)) {
+            return response()->json(['error' => 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed'], 400);
+        }
+
+        // Check file size (max 5MB)
+        if ($file->getSize() > 5 * 1024 * 1024) {
+            return response()->json(['error' => 'File too large. Maximum size is 5MB'], 400);
+        }
+
+        // Generate unique filename
+        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        
+        // Store file in avatars directory
+        $path = $file->storeAs('avatars', $filename, 'public');
+        
+        if (!$path) {
+            return response()->json(['error' => 'Failed to save file'], 500);
+        }
+
+        // Update user avatar
+        $user->avatar = $filename;
+        $user->save();
+
+        \Log::info('Avatar upload successful', [
+            'user_id' => $user->id,
+            'filename' => $filename,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'avatar' => $filename,
+            'avatar_url' => asset('storage/avatars/' . $filename)
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Avatar upload error: ' . $e->getMessage(), [
+            'exception' => $e->getTraceAsString(),
+        ]);
+        return response()->json(['error' => 'Upload failed: ' . $e->getMessage()], 500);
+    }
+})->middleware('auth:sanctum');
+
+// Simple test route (no auth)
+Route::get('/test-avatar', function () {
+    return response()->json(['message' => 'Avatar test route working']);
+});
+
+// Avatar upload test route (no auth) - for debugging
+Route::post('/test-avatar-upload', function (Request $request) {
+    \Log::info('Test avatar upload reached', [
+        'has_file' => $request->hasFile('avatar'),
+        'headers' => $request->headers->all(),
+        'all_data' => $request->all(),
+    ]);
+    
+    return response()->json([
+        'message' => 'Test upload received',
+        'has_file' => $request->hasFile('avatar'),
+        'file_info' => $request->hasFile('avatar') ? [
+            'name' => $request->file('avatar')->getClientOriginalName(),
+            'size' => $request->file('avatar')->getSize(),
+            'mime' => $request->file('avatar')->getMimeType(),
+        ] : null,
     ]);
 });
 
@@ -133,15 +231,8 @@ Route::get('/tags', function () {
     }
 });
 
-// Tools CRUD routes (keep existing)
-Route::get('/tools', function () {
-    try {
-        $tools = \App\Models\AiTool::with(['categories', 'roles', 'tags'])->get();
-        return response()->json($tools);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Failed to fetch tools: ' . $e->getMessage()], 500);
-    }
-});
+// Tools CRUD routes with validation
+Route::get('/tools', [AiToolController::class, 'index']);
 
 Route::options('/tools', function () {
     $response = response()->json(['message' => 'CORS preflight OK']);
@@ -151,116 +242,13 @@ Route::options('/tools', function () {
     return $response;
 });
 
-Route::post('/tools', function (Request $request) {
-    try {
-        $toolData = $request->all();
-        
-        // Debug logging
-        error_log('Tools POST - Received data: ' . json_encode($toolData));
-        error_log('Tools POST - Headers: ' . json_encode($request->headers->all()));
-        
-        $tool = \App\Models\AiTool::create([
-            'name' => $toolData['name'],
-            'description' => $toolData['description'],
-            'long_description' => $toolData['long_description'] ?? null,
-            'url' => $toolData['url'] ?? null,
-            'api_endpoint' => $toolData['api_endpoint'] ?? null,
-            'icon' => $toolData['icon'] ?? '🤖',
-            'color' => $toolData['color'] ?? '#3B82F6',
-            'version' => $toolData['version'] ?? '1.0.0',
-            'status' => $toolData['status'] ?? 'active',
-            'is_featured' => $toolData['is_featured'] ?? false,
-            'is_active' => $toolData['is_active'] ?? true,
-            'requires_auth' => $toolData['requires_auth'] ?? false,
-            'api_key_required' => $toolData['api_key_required'] ?? false,
-            'sort_order' => $toolData['sort_order'] ?? 0,
-        ]);
+Route::post('/tools', [AiToolController::class, 'store']);
 
-        // Handle relationships
-        if (isset($toolData['categories']) && is_array($toolData['categories'])) {
-            $tool->categories()->attach($toolData['categories']);
-        }
-        if (isset($toolData['roles']) && is_array($toolData['roles'])) {
-            $tool->roles()->attach($toolData['roles']);
-        }
-        if (isset($toolData['tags']) && is_array($toolData['tags'])) {
-            $tool->tags()->attach($toolData['tags']);
-        }
+Route::get('/tools/{id}', [AiToolController::class, 'show']);
 
-        $response = response()->json($tool, 201);
-        $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-        return $response;
-    } catch (\Exception $e) {
-        $response = response()->json(['error' => 'Failed to create tool: ' . $e->getMessage()], 500);
-        $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-        return $response;
-    }
-});
+Route::put('/tools/{id}', [AiToolController::class, 'update']);
 
-Route::put('/tools/{id}', function ($id, Request $request) {
-    // Debug logging
-    error_log('PUT /tools/' . $id . ' called');
-    error_log('Request data: ' . json_encode($request->all()));
-    
-    try {
-        $tool = \App\Models\AiTool::findOrFail($id);
-        $toolData = $request->all();
-        
-        $tool->update([
-            'name' => $toolData['name'],
-            'description' => $toolData['description'],
-            'long_description' => $toolData['long_description'] ?? $tool->long_description,
-            'url' => $toolData['url'] ?? $tool->url,
-            'api_endpoint' => $toolData['api_endpoint'] ?? $tool->api_endpoint,
-            'icon' => $toolData['icon'] ?? $tool->icon,
-            'color' => $toolData['color'] ?? $tool->color,
-            'version' => $toolData['version'] ?? $tool->version,
-            'status' => $toolData['status'] ?? $tool->status,
-            'is_featured' => $toolData['is_featured'] ?? $tool->is_featured,
-            'is_active' => $toolData['is_active'] ?? $tool->is_active,
-            'requires_auth' => $toolData['requires_auth'] ?? $tool->requires_auth,
-            'api_key_required' => $toolData['api_key_required'] ?? $tool->api_key_required,
-            'sort_order' => $toolData['sort_order'] ?? $tool->sort_order,
-        ]);
-
-        // Update relationships - handle both formats
-        if (isset($toolData['categories']) && is_array($toolData['categories'])) {
-            $tool->categories()->sync($toolData['categories']);
-        } elseif (isset($toolData['category_ids']) && is_array($toolData['category_ids'])) {
-            $tool->categories()->sync($toolData['category_ids']);
-        }
-        if (isset($toolData['roles']) && is_array($toolData['roles'])) {
-            $tool->roles()->sync($toolData['roles']);
-        } elseif (isset($toolData['role_ids']) && is_array($toolData['role_ids'])) {
-            $tool->roles()->sync($toolData['role_ids']);
-        }
-        if (isset($toolData['tags']) && is_array($toolData['tags'])) {
-            $tool->tags()->sync($toolData['tags']);
-        } elseif (isset($toolData['tag_ids']) && is_array($toolData['tag_ids'])) {
-            $tool->tags()->sync($toolData['tag_ids']);
-        }
-
-        error_log('Tool updated successfully');
-        return response()->json($tool);
-    } catch (\Exception $e) {
-        error_log('Error updating tool: ' . $e->getMessage());
-        return response()->json(['error' => 'Failed to update tool: ' . $e->getMessage()], 500);
-    }
-});
-
-Route::delete('/tools/{id}', function ($id) {
-    try {
-        $tool = \App\Models\AiTool::findOrFail($id);
-        $tool->delete();
-        return response()->json(['message' => 'Tool deleted successfully']);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Failed to delete tool: ' . $e->getMessage()], 500);
-    }
-});
+Route::delete('/tools/{id}', [AiToolController::class, 'destroy']);
 
 // Test route
 Route::get('/test', function () {

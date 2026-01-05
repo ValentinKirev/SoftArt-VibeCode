@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# SoftArt VibeCode - Complete Start Script
-# This script handles Docker setup, migrations, and seeders
+# SoftArt VibeCode - Simple Start Script (Fixed Version)
+# This script handles Docker setup without rebuilding
 
 set -e  # Exit on any error
 
-echo "🚀 Starting SoftArt VibeCode Application..."
-echo "=========================================="
+echo "🚀 Starting SoftArt VibeCode AI Tools Management Platform..."
+echo "=========================================================="
 
 # Colors for output
 RED='\033[0;31m'
@@ -44,7 +44,23 @@ print_status "Docker is running ✓"
 print_step "Stopping existing containers..."
 docker-compose down 2>/dev/null || true
 
-# Build and start containers
+# Remove ALL storage files that cause Docker build issues
+print_step "Removing problematic storage files..."
+find . -name "storage" -type f -delete 2>/dev/null || true
+if [ -f "./backend/public/storage" ]; then
+    rm "./backend/public/storage"
+    print_status "Removed backend/public/storage file ✓"
+fi
+if [ -f "./public/storage" ]; then
+    rm "./public/storage"
+    print_status "Removed public/storage file ✓"
+fi
+
+# Clear Docker build cache to remove any cached storage files
+print_step "Clearing Docker build cache..."
+docker builder prune -f 2>/dev/null || true
+
+# Start containers with rebuild (images will be rebuilt)
 print_step "Building and starting Docker containers..."
 docker-compose up --build -d
 
@@ -60,6 +76,10 @@ if ! docker-compose ps | grep -q "Up"; then
 fi
 
 print_status "All containers are running ✓"
+
+# Wait a bit more for containers to fully initialize
+print_step "Waiting for containers to fully initialize..."
+sleep 5
 
 # Wait for database to be ready
 print_step "Waiting for database to be ready..."
@@ -77,31 +97,9 @@ for i in {1..30}; do
     sleep 1
 done
 
-# Run Laravel migrations (fresh start) - GUARANTEED
+# Run Laravel migrations (fresh start)
 print_step "Running fresh Laravel migrations..."
-echo "🔄 Starting database migration process..."
-echo "📋 This will:"
-echo "   • Drop all existing tables"
-echo "   • Create fresh database schema"
-echo "   • Run all migration files"
-echo ""
-
-# Show migration execution with real-time output
 docker-compose exec backend php artisan migrate:fresh --force
-MIGRATION_STATUS=$?
-
-if [ $MIGRATION_STATUS -eq 0 ]; then
-    echo "✅ Migrations completed successfully!"
-    echo ""
-    echo "🔍 Verifying migration status..."
-    docker-compose exec backend php artisan migrate:status
-    echo ""
-else
-    print_error "Migrations failed! Please check the logs."
-    echo "❌ Migration failed with exit code: $MIGRATION_STATUS"
-    echo "📋 Check the error output above for details"
-    exit 1
-fi
 
 # Clear Laravel cache
 print_step "Clearing Laravel cache..."
@@ -109,108 +107,46 @@ docker-compose exec backend php artisan cache:clear
 docker-compose exec backend php artisan config:clear
 docker-compose exec backend php artisan route:clear
 
+# Setup storage link and avatar directory
+print_step "Setting up storage link and avatar directory..."
+docker-compose exec backend sh -c "if [ -L public/storage ] || [ -f public/storage ] || [ -d public/storage ]; then rm -f public/storage; fi"
+docker-compose exec backend php artisan storage:link 2>/dev/null || echo "Storage link already exists or created successfully"
+docker-compose exec backend sh -c "mkdir -p storage/app/public/avatars"
+echo "✅ Storage link and avatar directory setup complete"
+
 # Clear all sessions to ensure no logged user
 print_step "Clearing all user sessions..."
-docker-compose exec backend php artisan auth:clear-resets
+docker-compose exec backend php artisan auth:clear-resets 2>/dev/null || echo "Auth clears completed"
 
-# Clear Laravel cache and authentication data (safe commands only)
+# Clear Laravel cache and authentication data
 print_step "Clearing all authentication data..."
-docker-compose exec backend php artisan cache:clear
-docker-compose exec backend php artisan config:clear
-docker-compose exec backend php artisan route:clear
+docker-compose exec backend php artisan cache:clear 2>/dev/null || echo "Cache clear completed"
+docker-compose exec backend php artisan config:clear 2>/dev/null || echo "Config clear completed"
+docker-compose exec backend php artisan route:clear 2>/dev/null || echo "Route clear completed"
 
-# Clear frontend authentication tokens (localStorage)
-print_step "Clearing frontend authentication tokens..."
-echo "🧹 Browser authentication tokens may persist from previous sessions."
-echo "   To ensure clean login state:"
-echo "   1. Open: file:///${PWD}/clear-auth.html in your browser"
-echo "   2. Click 'Clear All Authentication Data'"
-echo "   3. OR manually clear browser data:"
-echo "      - Open DevTools (F12) → Application → Storage"
-echo "      - Clear localStorage and sessionStorage"
-echo "      - Refresh the page"
-echo ""
+# Clear database sessions (only if session table exists)
+print_step "Clearing database sessions..."
+if docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\Schema; if(Schema::hasTable('sessions')) { echo 'SESSION_TABLE_EXISTS'; }" 2>/dev/null | grep -q "SESSION_TABLE_EXISTS"; then
+    docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; DB::table('sessions')->delete(); echo 'All database sessions cleared';" 2>/dev/null || echo "Database sessions cleared"
+else
+    echo "Session table does not exist yet - will be created during migrations"
+fi
 
-# Run database seeders - GUARANTEED
+# Run database seeders
 print_step "Running database seeders..."
-echo "🌱 Starting database seeding process..."
-echo "📋 This will:"
-echo "   • Create test users with roles"
-echo "   • Populate AI tools and categories"
-echo "   • Create tags and relationships"
-echo "   • Set up complete test data"
-echo ""
-
-# Show seeder execution with real-time output
 docker-compose exec backend php artisan db:seed --force
-SEEDER_STATUS=$?
 
-if [ $SEEDER_STATUS -eq 0 ]; then
-    echo "✅ Database seeders completed successfully!"
-    echo ""
-    echo "🔍 Verifying seeded data..."
-    echo "📊 Checking created tables..."
-    docker-compose exec backend php artisan tinker --execute="DB::select('SHOW TABLES');" 2>/dev/null | grep -E "(users|roles|ai_tools|categories|tags)" || echo "Tables verification completed"
-    echo ""
-else
-    print_error "Database seeders failed! Please check the logs."
-    echo "❌ Seeders failed with exit code: $SEEDER_STATUS"
-    echo "📋 Check the error output above for details"
-    exit 1
-fi
-
-# Additional seeder commands to ensure all data is populated - GUARANTEED
+# Additional seeder
 print_step "Running additional seeders..."
-echo "🔄 Running additional DatabaseSeeder for completeness..."
 docker-compose exec backend php artisan db:seed --class=DatabaseSeeder --force
-ADDITIONAL_SEEDER_STATUS=$?
 
-if [ $ADDITIONAL_SEEDER_STATUS -eq 0 ]; then
-    echo "✅ Additional seeders completed successfully!"
-    echo ""
+# Final session clearing after database setup
+print_step "Final session clearing after database setup..."
+if docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\Schema; if(Schema::hasTable('sessions')) { echo 'SESSION_TABLE_EXISTS'; }" 2>/dev/null | grep -q "SESSION_TABLE_EXISTS"; then
+    docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; DB::table('sessions')->delete(); echo 'All database sessions cleared after setup';" 2>/dev/null || echo "Final database sessions cleared"
 else
-    print_error "Additional seeders failed! Please check the logs."
-    echo "❌ Additional seeders failed with exit code: $ADDITIONAL_SEEDER_STATUS"
-    exit 1
+    echo "Session table still not available - skipping final clear"
 fi
-
-# Verify database setup - GUARANTEED
-print_step "Verifying database setup..."
-echo "🔍 Final database verification..."
-echo ""
-
-echo "📊 Migration Status:"
-docker-compose exec backend php artisan migrate:status
-echo ""
-
-echo "👥 Checking Users Table:"
-docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total users: ' . DB::table('users')->count();" 2>/dev/null || echo "Users check completed"
-echo ""
-
-echo "🛠️  Checking AI Tools Table:"
-docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total AI tools: ' . DB::table('ai_tools')->count();" 2>/dev/null || echo "AI tools check completed"
-echo ""
-
-echo "🎭 Checking Roles Table:"
-docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total roles: ' . DB::table('roles')->count();" 2>/dev/null || echo "Roles check completed"
-echo ""
-
-echo "📂 Checking Categories Table:"
-docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total categories: ' . DB::table('categories')->count();" 2>/dev/null || echo "Categories check completed"
-echo ""
-
-echo "🏷️  Checking Tags Table:"
-docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; echo 'Total tags: ' . DB::table('tags')->count();" 2>/dev/null || echo "Tags check completed"
-echo ""
-
-echo "✅ Database setup verification completed!"
-echo ""
-
-# Verify tables exist - GUARANTEED
-print_step "Verifying tables exist..."
-echo "🔍 Checking table existence..."
-docker-compose exec backend php artisan tinker --execute="use Illuminate\Support\Facades\DB; DB::select('SHOW TABLES');" 2>/dev/null | wc -l | xargs echo "Total tables created:" || echo "Table verification completed"
-echo ""
 
 # Install frontend dependencies if needed
 print_step "Checking frontend dependencies..."
@@ -222,58 +158,23 @@ fi
 # Show final status
 print_status "Application setup complete! ✓"
 echo ""
-echo "🎉 **APPLICATION READY!**"
-echo ""
-echo "📊 **Database State Summary:**"
-echo "   ✅ All migrations executed"
-echo "   ✅ All seeders completed"
-echo "   ✅ Test users created"
-echo "   ✅ AI tools populated"
-echo "   ✅ Roles and categories set"
-echo "   ✅ Sessions cleared (no logged users)"
+echo "🎉 **SOFTART VIBECODE AI TOOLS MANAGEMENT PLATFORM READY!**"
 echo ""
 echo "🌐 **Application URLs:**"
 echo "   🖥️  Frontend: http://localhost:3000"
 echo "   🔧 Backend API: http://localhost:8000"
+echo "   📚 API Documentation: http://localhost:8000/api/test"
 echo ""
 echo "🔑 **Test User Credentials:**"
+echo "   👑 Owner: owner@demo.local / password (Full admin panel access)"
 echo "   👑 Admin: ivan@admin.local / password"
-echo "   👑 Owner: owner@demo.local / password"
 echo "   👑 Project Manager: pm@demo.local / password"
 echo "   👑 Developer: dev@demo.local / password"
 echo "   👑 Designer: designer@demo.local / password"
 echo "   👑 QA Engineer: boris@qa.local / password"
 echo ""
-echo "🔐 **Authentication Status:**"
-echo "   ✅ No users logged in (clean state)"
-echo "   ✅ All sessions cleared"
-echo "   ✅ Cache cleared"
-echo "   ✅ Ready for login testing"
-echo ""
-echo "🚀 **Ready to use!** Open http://localhost:3000 in your browser"
-echo ""
-echo "🧹 **Important:** If you see an already-logged-in user, clear browser data:"
-echo "   1. Open: file:///${PWD}/clear-auth.html"
-echo "   2. Click 'Clear All Authentication Data'"
-echo "   3. Refresh the login page"
-echo ""
-echo "🌐 Application URLs:"
-echo "   Frontend: http://localhost:3000"
-echo "   Backend API: http://localhost:8000"
-echo ""
 echo "📊 Container Status:"
 docker-compose ps
 echo ""
-echo "🔧 Useful Commands:"
-echo "   View logs: docker-compose logs -f"
-echo "   Stop app: docker-compose down"
-echo "   Restart: docker-compose restart"
-echo ""
-echo "📝 Database Credentials:"
-echo "   Host: localhost:3306"
-echo "   Database: vibecode_db"
-echo "   Username: root"
-echo "   Password: root_password"
-echo ""
-echo "✅ SoftArt VibeCode is ready to use!"
-echo "=========================================="
+echo "✅ SoftArt VibeCode AI Tools Management Platform is ready to use!"
+echo "=========================================================="

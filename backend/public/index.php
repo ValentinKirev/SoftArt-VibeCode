@@ -1,18 +1,45 @@
 <?php
 
-// Simple API router for SoftArt AI HUB
-header('Content-Type: application/json');
-
-// Enable CORS for all requests
-header('Access-Control-Allow-Origin: *');
+// Enable CORS for all requests FIRST
+header('Access-Control-Allow-Origin: http://localhost:3000');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+header('Access-Control-Allow-Credentials: true');
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
+
+$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+$request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+// Handle avatar file requests (not JSON)
+if (strpos($request_uri, '/storage/avatars/') === 0) {
+    $filename = str_replace('/storage/avatars/', '', $request_uri);
+    $filename = str_replace('?', '', $filename); // Remove query string
+    $filepath = __DIR__ . '/../storage/app/public/avatars/' . $filename;
+    
+    if (file_exists($filepath) && is_file($filepath)) {
+        // Set appropriate headers for image serving
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($finfo, $filepath);
+        finfo_close($finfo);
+        
+        header('Content-Type: ' . $mime_type);
+        header('Cache-Control: public, max-age=31536000'); // Cache for 1 year
+        readfile($filepath);
+        exit;
+    } else {
+        http_response_code(404);
+        echo 'Avatar not found';
+        exit;
+    }
+}
+
+// Simple API router for SoftArt AI HUB
+header('Content-Type: application/json');
 
 // Helper function to get all HTTP headers
 function get_http_headers() {
@@ -118,129 +145,250 @@ switch ($request_method) {
             }
         } elseif ($endpoint === '/logout') {
             echo json_encode(['message' => 'Logged out successfully']);
-        } elseif ($endpoint === '/tools') {
-            // Create new tool
-            $raw_input = file_get_contents('php://input');
+        } elseif ($endpoint === '/user/avatar') {
+            // Handle avatar upload
+            $headers = get_http_headers();
+            $auth_header = $headers['Authorization'] ?? '';
+            $token = str_replace('Bearer ', '', $auth_header);
             
-            // Debug logging
-            error_log("Raw input: " . $raw_input);
-            
-            // Try standard JSON parsing first
-            $input = json_decode($raw_input, true);
-            
-            // If standard parsing fails, try fixing common issues
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log("Standard JSON parsing failed, attempting fixes...");
-                
-                // Fix common JSON issues
-                $raw_input = str_replace("'", '"', $raw_input);
-                $raw_input = preg_replace('/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/', '$1"$2":', $raw_input);
-                $raw_input = preg_replace('/:\s*([a-zA-Z][a-zA-Z0-9_]*)([,\}])/', ':"$1"$2', $raw_input);
-                
-                $input = json_decode($raw_input, true);
-                error_log("Fixed input: " . $raw_input);
-            }
-            
-            // If still no input, try the simple fallback
-            if (!$input) {
-                error_log("JSON parsing failed, trying fallback");
-                $raw_input = str_replace(['{', '}'], '', $raw_input);
-                $raw_input = trim($raw_input);
-                $pairs = explode(',', $raw_input);
-                $input = [];
-                $capturedName = '';
-                $capturedDescription = '';
-                
-                foreach ($pairs as $pair) {
-                    $pair = trim($pair);
-                    if (strpos($pair, ':') !== false) {
-                        list($key, $value) = explode(':', $pair, 2);
-                        $cleanKey = trim($key);
-                        $cleanValue = trim($value, '"');
-                        $input[$cleanKey] = $cleanValue;
-                        
-                        error_log("Processing pair: '$cleanKey' => '$cleanValue'");
-                        
-                        // CAPTURE NAME AND DESCRIPTION DURING PARSING
-                        if ($cleanKey === 'name' || $cleanKey === '"name"') {
-                            $capturedName = $cleanValue;
-                            error_log("Captured name: '$capturedName'");
-                        }
-                        if ($cleanKey === 'description' || $cleanKey === '"description"') {
-                            $capturedDescription = $cleanValue;
-                            error_log("Captured description: '$capturedDescription'");
-                        }
-                    }
-                }
-                
-                error_log("After fallback parsing - Captured name: '$capturedName', Captured description: '$capturedDescription'");
-            }
-            
-            error_log("Decoded input: " . print_r($input, true));
-            
-            // USE CAPTURED VALUES IF AVAILABLE
-            $name = $capturedName ?? ($input['name'] ?? '');
-            $description = $capturedDescription ?? ($input['description'] ?? '');
-            
-            error_log("Final values - Name: '$name', Description: '$description'");
-            
-            // VALIDATE WITH CAPTURED VALUES
-            if (empty($name) || empty($description)) {
-                error_log("Validation failed - Name: '$name', Description: '$description'");
-                http_response_code(400);
-                echo json_encode(['error' => 'Name and description are required']);
+            // Check if token is provided
+            if (empty($token)) {
+                http_response_code(401);
+                echo json_encode(['error' => 'No token provided']);
                 exit;
             }
             
-            // Assign remaining variables with proper defaults
-            $slug = $input['slug'] ?? '';
-            $long_description = $input['long_description'] ?? '';
-            $url = $input['url'] ?? '';
-            $api_endpoint = $input['documentation_url'] ?? '';
-            $icon = $input['icon'] ?? '🤖';
-            $color = $input['color'] ?? '#3B82F6';
-            $version = $input['version'] ?? '1.0.0';
-            $status = $input['status'] ?? 'active';
-            $is_active = ($input['is_active'] ?? true) ? 1 : 0;
-            $requires_auth = ($input['requires_auth'] ?? false) ? 1 : 0;
-            $api_key_required = ($input['api_key_required'] ?? false) ? 1 : 0;
-            $categories = $input['categories'] ?? [];
-            $roles = $input['roles'] ?? [];
-            $tags = $input['tags'] ?? [];
-            $examples = $input['examples'] ?? [];
-
-            error_log("Variables assigned successfully - Name: '$name', Description: '$description'");
-
-            // Generate slug if not provided
-            if (empty($slug)) {
-                $slug = strtolower(preg_replace('/[^a-z0-9]+/', '-', $name));
-                $slug = trim($slug, '-');
+            // Extract user ID from token (format: laravel-token-{id}-{timestamp})
+            if (preg_match('/laravel-token-(\d+)-/', $token, $matches)) {
+                $user_id = $matches[1];
+                
+                // Check if file was uploaded
+                if (!isset($_FILES['avatar'])) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'No file uploaded']);
+                    exit;
+                }
+                
+                $file = $_FILES['avatar'];
+                
+                // Validate file
+                if ($file['error'] !== UPLOAD_ERR_OK) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'File upload error: ' . $file['error']]);
+                    exit;
+                }
+                
+                // Check file type
+                $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime_type = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                
+                if (!in_array($mime_type, $allowed_types)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed']);
+                    exit;
+                }
+                
+                // Check file size (max 5MB)
+                if ($file['size'] > 5 * 1024 * 1024) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'File too large. Maximum size is 5MB']);
+                    exit;
+                }
+                
+                // Generate unique filename
+                $filename = time() . '_' . uniqid() . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
+                
+                // Create avatars directory if it doesn't exist
+                $avatars_dir = __DIR__ . '/../storage/app/public/avatars';
+                if (!is_dir($avatars_dir)) {
+                    mkdir($avatars_dir, 0755, true);
+                }
+                
+                // Move file to avatars directory
+                $upload_path = $avatars_dir . '/' . $filename;
+                if (move_uploaded_file($file['tmp_name'], $upload_path)) {
+                    // Update user avatar in database
+                    $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
+                    $stmt->execute([$filename, $user_id]);
+                    
+                    echo json_encode([
+                        'success' => true,
+                        'avatar' => $filename,
+                        'avatar_url' => 'http://localhost:8000/storage/avatars/' . $filename
+                    ]);
+                } else {
+                    http_response_code(500);
+                    echo json_encode(['error' => 'Failed to save file']);
+                }
+            } else {
+                http_response_code(401);
+                echo json_encode(['error' => 'Invalid token format']);
             }
-
-            // Insert tool
-            $stmt = $pdo->prepare("INSERT INTO ai_tools (name, slug, description, long_description, url, documentation_url, icon, color, version, status, is_active, requires_auth, api_key_required) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $slug, $description, $long_description, $url, $api_endpoint, $icon, $color, $version, $status, $is_active, $requires_auth, $api_key_required]);
-            $tool_id = $pdo->lastInsertId();
-
-            // Insert categories
-            foreach ($categories as $category_id) {
-                $stmt = $pdo->prepare("INSERT INTO ai_tool_category (ai_tool_id, category_id) VALUES (?, ?)");
-                $stmt->execute([$tool_id, $category_id]);
+        } elseif ($endpoint === '/tools') {
+            // Create new tool
+            $headers = get_http_headers();
+            $auth_header = $headers['Authorization'] ?? '';
+            $token = str_replace('Bearer ', '', $auth_header);
+            
+            // Check if token is provided
+            if (empty($token)) {
+                http_response_code(401);
+                echo json_encode(['error' => 'No token provided']);
+                exit;
             }
-
-            // Insert roles
-            foreach ($roles as $role_id) {
-                $stmt = $pdo->prepare("INSERT INTO ai_tool_role (ai_tool_id, role_id, access_level) VALUES (?, ?, 'read')");
-                $stmt->execute([$tool_id, $role_id]);
+            
+            // Extract user ID from token (format: laravel-token-{id}-{timestamp})
+            if (preg_match('/laravel-token-(\d+)-/', $token, $matches)) {
+                $user_id = $matches[1];
+                
+                // Get user role to determine approval status
+                $stmt = $pdo->prepare("SELECT u.*, r.slug as role_slug FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?");
+                $stmt->execute([$user_id]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$user) {
+                    http_response_code(401);
+                    echo json_encode(['error' => 'User not found']);
+                    exit;
+                }
+                
+                // Determine if tool should be auto-approved (only for 'owner' role)
+                $is_approved = ($user['role_slug'] === 'owner') ? 1 : 0;
+                
+                $raw_input = file_get_contents('php://input');
+                
+                // Debug logging
+                error_log("Raw input: " . $raw_input);
+                
+                // Try standard JSON parsing first
+                $input = json_decode($raw_input, true);
+                
+                // If standard parsing fails, try fixing common issues
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    error_log("Standard JSON parsing failed, attempting fixes...");
+                    
+                    // Fix common JSON issues
+                    $raw_input = str_replace("'", '"', $raw_input);
+                    $raw_input = preg_replace('/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/', '$1"$2":', $raw_input);
+                    $raw_input = preg_replace('/:\s*([a-zA-Z][a-zA-Z0-9_]*)([,\}])/', ':"$1"$2', $raw_input);
+                    
+                    $input = json_decode($raw_input, true);
+                    error_log("Fixed input: " . $raw_input);
+                }
+                
+                // If still no input, try the simple fallback
+                if (!$input) {
+                    error_log("JSON parsing failed, trying fallback");
+                    $raw_input = str_replace(['{', '}'], '', $raw_input);
+                    $raw_input = trim($raw_input);
+                    $pairs = explode(',', $raw_input);
+                    $input = [];
+                    $capturedName = '';
+                    $capturedDescription = '';
+                    
+                    foreach ($pairs as $pair) {
+                        $pair = trim($pair);
+                        if (strpos($pair, ':') !== false) {
+                            list($key, $value) = explode(':', $pair, 2);
+                            $cleanKey = trim($key);
+                            $cleanValue = trim($value, '"');
+                            $input[$cleanKey] = $cleanValue;
+                            
+                            error_log("Processing pair: '$cleanKey' => '$cleanValue'");
+                            
+                            // CAPTURE NAME AND DESCRIPTION DURING PARSING
+                            if ($cleanKey === 'name' || $cleanKey === '"name"') {
+                                $capturedName = $cleanValue;
+                                error_log("Captured name: '$capturedName'");
+                            }
+                            if ($cleanKey === 'description' || $cleanKey === '"description"') {
+                                $capturedDescription = $cleanValue;
+                                error_log("Captured description: '$capturedDescription'");
+                            }
+                        }
+                    }
+                    
+                    error_log("After fallback parsing - Captured name: '$capturedName', Captured description: '$capturedDescription'");
+                }
+                
+                error_log("Decoded input: " . print_r($input, true));
+                
+                // USE CAPTURED VALUES IF AVAILABLE
+                $name = $capturedName ?? ($input['name'] ?? '');
+                $description = $capturedDescription ?? ($input['description'] ?? '');
+                
+                error_log("Final values - Name: '$name', Description: '$description'");
+                
+                // VALIDATE WITH CAPTURED VALUES
+                if (empty($name) || empty($description)) {
+                    error_log("Validation failed - Name: '$name', Description: '$description'");
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Name and description are required']);
+                    exit;
+                }
+                
+                // Assign remaining variables with proper defaults
+                $slug = $input['slug'] ?? '';
+                $long_description = $input['long_description'] ?? '';
+                $url = $input['url'] ?? '';
+                $api_endpoint = $input['documentation_url'] ?? '';
+                $icon = $input['icon'] ?? '';
+                $color = $input['color'] ?? '#3B82F6';
+                $version = $input['version'] ?? '1.0.0';
+                $status = $input['status'] ?? 'active';
+                $is_active = ($input['is_active'] ?? true) ? 1 : 0;
+                $requires_auth = ($input['requires_auth'] ?? false) ? 1 : 0;
+                $api_key_required = ($input['api_key_required'] ?? false) ? 1 : 0;
+                $categories = $input['categories'] ?? [];
+                $roles = $input['roles'] ?? [];
+                $tags = $input['tags'] ?? [];
+                $examples = $input['examples'] ?? [];
+                
+                error_log("Variables assigned successfully - Name: '$name', Description: '$description', Long Description: '$long_description', User Role: '{$user['role_slug']}', Auto-approved: " . ($is_approved ? 'true' : 'false'));
+                
+                // Generate slug if not provided
+                if (empty($slug)) {
+                    $slug = strtolower(preg_replace('/[^a-z0-9]+/', '-', $name));
+                    $slug = trim($slug, '-');
+                }
+                
+                // Insert tool with approval status
+                $stmt = $pdo->prepare("INSERT INTO ai_tools (name, slug, description, long_description, url, documentation_url, icon, color, version, status, is_active, requires_auth, api_key_required, is_approved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$name, $slug, $description, $long_description, $url, $api_endpoint, $icon, $color, $version, $status, $is_active, $requires_auth, $api_key_required, $is_approved]);
+                $tool_id = $pdo->lastInsertId();
+                
+                error_log("Tool created with ID: $tool_id, is_approved: $is_approved");
+                
+                // Insert categories
+                foreach ($categories as $category_id) {
+                    $stmt = $pdo->prepare("INSERT INTO ai_tool_category (ai_tool_id, category_id) VALUES (?, ?)");
+                    $stmt->execute([$tool_id, $category_id]);
+                }
+                
+                // Insert roles
+                foreach ($roles as $role_id) {
+                    $stmt = $pdo->prepare("INSERT INTO ai_tool_role (ai_tool_id, role_id, access_level) VALUES (?, ?, 'read')");
+                    $stmt->execute([$tool_id, $role_id]);
+                }
+                
+                // Insert tags
+                foreach ($tags as $tag_id) {
+                    $stmt = $pdo->prepare("INSERT INTO ai_tool_tag (ai_tool_id, tag_id) VALUES (?, ?)");
+                    $stmt->execute([$tool_id, $tag_id]);
+                }
+                
+                echo json_encode([
+                    'message' => 'Tool created successfully', 
+                    'tool_id' => $tool_id,
+                    'is_approved' => $is_approved,
+                    'auto_approved' => $is_approved ? true : false
+                ]);
+            } else {
+                http_response_code(401);
+                echo json_encode(['error' => 'Invalid token format']);
             }
-
-            // Insert tags
-            foreach ($tags as $tag_id) {
-                $stmt = $pdo->prepare("INSERT INTO ai_tool_tag (ai_tool_id, tag_id) VALUES (?, ?)");
-                $stmt->execute([$tool_id, $tag_id]);
-            }
-
-            echo json_encode(['message' => 'Tool created successfully', 'tool_id' => $tool_id]);
         } elseif ($endpoint === '/categories') {
             // Create new category
             $raw_input = file_get_contents('php://input');
@@ -504,6 +652,11 @@ switch ($request_method) {
             if (isset($input['api_key_required'])) {
                 $update_fields[] = 'api_key_required = ?';
                 $params[] = $input['api_key_required'] ? 1 : 0;
+            }
+            if (isset($input['is_approved'])) {
+                $update_fields[] = 'is_approved = ?';
+                $params[] = $input['is_approved'] ? 1 : 0;
+                error_log("Found is_approved field: " . ($input['is_approved'] ? 'true' : 'false'));
             }
             // Skip sort_order - not in database
             
