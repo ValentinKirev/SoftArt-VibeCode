@@ -7,7 +7,7 @@ interface Tool {
   description: string;
   long_description?: string;
   url?: string;
-  api_endpoint?: string;
+  documentation_url?: string;
   icon?: string;
   color?: string;
   version?: string;
@@ -83,7 +83,7 @@ const ToolManager: React.FC<ToolManagerProps> = ({ onClose, onSave, initialTool,
         description: '',
         long_description: '',
         url: '',
-        api_endpoint: '',
+        documentation_url: '',
         icon: '🤖',
         color: '#3B82F6',
         version: '1.0.0',
@@ -126,7 +126,7 @@ const ToolManager: React.FC<ToolManagerProps> = ({ onClose, onSave, initialTool,
       description: apiTool.description || '',
       long_description: apiTool.long_description || '',
       url: apiTool.url || '',
-      api_endpoint: apiTool.documentation_url || apiTool.api_endpoint || '',
+      documentation_url: apiTool.documentation_url || '',
       icon: apiTool.icon || '🤖',
       color: apiTool.color || '#3B82F6',
       version: apiTool.version || '1.0.0',
@@ -356,7 +356,7 @@ const ToolManager: React.FC<ToolManagerProps> = ({ onClose, onSave, initialTool,
       errors.push('URL is required');
     }
     
-    if (!tool.api_endpoint) {
+    if (!tool.documentation_url) {
       errors.push('Documentation URL is required');
     }
     
@@ -364,7 +364,7 @@ const ToolManager: React.FC<ToolManagerProps> = ({ onClose, onSave, initialTool,
       errors.push('URL must be a valid URL');
     }
     
-    if (tool.api_endpoint && !isValidUrl(tool.api_endpoint)) {
+    if (tool.documentation_url && !isValidUrl(tool.documentation_url)) {
       errors.push('Documentation URL must be a valid URL');
     }
     
@@ -632,8 +632,8 @@ const ToolManager: React.FC<ToolManagerProps> = ({ onClose, onSave, initialTool,
               </label>
               <input
                 type="url"
-                value={tool.api_endpoint}
-                onChange={(e) => handleInputChange('api_endpoint', e.target.value)}
+                value={tool.documentation_url}
+                onChange={(e) => handleInputChange('documentation_url', e.target.value)}
                 required
                 disabled={readOnly}
                 style={{

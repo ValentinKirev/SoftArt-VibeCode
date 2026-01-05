@@ -7,7 +7,7 @@ interface Tool {
   description: string;
   long_description?: string;
   url?: string;
-  api_endpoint?: string;
+  documentation_url?: string;
   icon?: string;
   color?: string;
   version?: string;
